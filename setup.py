@@ -6,14 +6,14 @@ long_description = (this_directory / "README.md").read_text()
 
 VERSION = '0.0.1'
 DESCRIPTION = 'Este paquete nos permite consumir el API de falabella'
-PACKAGE_NAME = 'falabella-pkg'
+PACKAGE_NAME = 'FalabellaAPIClient'
 AUTHOR = 'Camilo Andrés Rodríguez Higuera'
 EMAIL = 'andres.roh@outlook.com'
-GITHUB_URL = 'https://github.com/andresroh/liniopy_pkg'
+GITHUB_URL = 'https://github.com/andresroh/FalabellaAPIClient'
 
 setup(
     name=PACKAGE_NAME,
-    packages=[DESCRIPTION],
+    packages=[PACKAGE_NAME],
     version=VERSION,
     license='MIT',
     description=DESCRIPTION,

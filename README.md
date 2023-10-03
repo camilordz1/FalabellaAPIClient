@@ -14,7 +14,7 @@ Uso básico
 Para usar este módulo, primero debe obtener las credenciales de acceso al API de desde [Linio sellercenter](https://sellercenter.linio.com.co/), en la sección de configuración general > administrar usuarios ó en [falabella sellercenter](https://sellercenter.falabella.com/), en la sección de Mi cuenta > Integraciones
 
 ```python
-from falabella import Session, Products, Service, Orders
+from FalabellaAPIClient import Session, Products, Service, Orders
 import json
 
 # login
