@@ -1,4 +1,4 @@
-# LinioPy
+# FalabellaAPIClient
 
 Este módulo permite interactuar con el API de Linio y Falabella para leer, actualizar y crear productos, órdenes y datos de clientes. Este módulo es útil para integrar el API de Linio con otros sistemas.
 
@@ -18,7 +18,7 @@ from falabella import Session, Products, Service, Orders
 import json
 
 # login
-user = "correo@ejemplo.com"
+user = "email@example.com"
 key = "_api_key_"
 
 session = Session(user, key, "falabella")
