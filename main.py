@@ -1,4 +1,4 @@
-from falabella import Session, Products, Service, Orders
+from FalabellaAPIClient import Session, Products, Service, Orders
 import json
 
 # login
