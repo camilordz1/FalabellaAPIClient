@@ -4,7 +4,7 @@ from setuptools import setup
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-VERSION = '0.0.1'
+VERSION = '0.1.1'
 DESCRIPTION = 'Este paquete nos permite consumir el API de falabella'
 PACKAGE_NAME = 'FalabellaAPIClient'
 AUTHOR = 'Camilo Andrés Rodríguez Higuera'
@@ -22,7 +22,7 @@ setup(
     author=AUTHOR,
     author_email=EMAIL,
     url=GITHUB_URL,
-    keywords=['python', 'alegra', 'alegra.com'],
+    keywords=['python', 'falabella', 'linio', 'seller center', 'api client'],
     install_requires=[
         'requests',
     ],

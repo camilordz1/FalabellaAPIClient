@@ -1,24 +1,32 @@
+import warnings
 from requests import request as rq
 
 
 class Service:
+    """Clase heredada (Legacy) para ejecutar peticiones HTTP.
+
+    Se recomienda migrar al uso de FalabellaClient.
+    """
 
     def request(self, session: object, method: str, params: dict = {},
                 payload: dict = {}, headers: dict = {}) -> dict | None:
-        """request method
+        """Método de petición heredado.
 
         Args:
-            session (object): credentials object
-            method (str): select https method
-            url (str): url endpoint
-            params (dict, optional): parameters. Defaults to {}.
-            payload (dict, optional): data. Defaults to {}.
-            headers (dict, optional): headers. Defaults to {}.
+            session (object): Objeto de sesión (Session).
+            method (str): Método HTTP (GET, POST).
+            params (dict, optional): Parámetros.
+            payload (dict, optional): Datos.
+            headers (dict, optional): Cabeceras.
 
         Returns:
-            dict | None: server response
+            dict | None: Respuesta del servidor o None.
         """
-
+        warnings.warn(
+            "La clase 'Service' es obsoleta. Use 'FalabellaClient' en su lugar.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         response = rq(method,
                       session.url,
                       data=payload,
@@ -26,7 +34,6 @@ class Service:
                       headers=headers)
 
         if response.status_code == 200:
-
             return response.json()
 
         return None

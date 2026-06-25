@@ -2,9 +2,14 @@ from hmac import HMAC
 from urllib import parse
 from hashlib import sha256
 from datetime import datetime
+import warnings
 
 
 class Session:
+    """Clase heredada (Legacy) para manejar la sesión y credenciales.
+
+    Se recomienda migrar al uso de FalabellaClient.
+    """
 
     headers = {
         'Accept': 'application/json',
@@ -13,34 +18,23 @@ class Session:
 
     def __init__(self, user: str, key: str, service: str = "linio",
                  country: str = "co") -> None:
-        """create a session to use falabella's API
-
-        Args:
-            user (str): email
-            key (str): api key
-            service (str, optional): select falabella or linio.
-            Defaults to "linio".
-            country (str, optional): country. Defaults to "co".
-        """
-
+        """Inicializa la sesión heredada."""
+        warnings.warn(
+            "La clase 'Session' es obsoleta. Use 'FalabellaClient' en su lugar.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         self.user = user
         self.key = key
+        self.service = service
+        self.country = country
 
         self.url = f"https://sellercenter-api.linio.com.{country}"
         if service == "falabella":
             self.url = "https://sellercenter-api.falabella.com"
 
     def signature(self, parameters: dict = None) -> dict:
-        """generate signature.
-
-        Args:
-            parameters (dict, optional): Additional parameters.
-            Defaults to None.
-
-        Returns:
-            dict: parameters
-        """
-
+        """Genera la firma de manera heredada."""
         params = {
             'UserID': self.user,
             'Version': '1.0',
