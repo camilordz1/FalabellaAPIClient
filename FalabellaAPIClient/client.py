@@ -276,6 +276,8 @@ class FalabellaClient:
             except requests.RequestException as e:
                 if (http_method == "GET"
                         and isinstance(e, (requests.ConnectionError, requests.Timeout))
+                        and not isinstance(e, (requests.exceptions.SSLError,
+                                               requests.exceptions.ProxyError))
                         and attempt <= self.max_retries):
                     delay = self._retry_delay(attempt, None)
                     logger.warning(

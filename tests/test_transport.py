@@ -199,3 +199,23 @@ def test_delay_is_capped_at_60_seconds():
     client, sleeps = make()
     get(client)
     assert sleeps == [60.0]
+
+
+@responses.activate
+def test_get_does_not_retry_ssl_error():
+    responses.add(responses.GET, URL, body=requests.exceptions.SSLError("bad cert"))
+    client, sleeps = make()
+    with pytest.raises(FalabellaAPIError) as exc_info:
+        get(client)
+    assert isinstance(exc_info.value.__cause__, requests.exceptions.SSLError)
+    assert (len(responses.calls), sleeps) == (1, [])
+
+
+@responses.activate
+def test_get_does_not_retry_proxy_error():
+    responses.add(responses.GET, URL, body=requests.exceptions.ProxyError("proxy down"))
+    client, sleeps = make()
+    with pytest.raises(FalabellaAPIError) as exc_info:
+        get(client)
+    assert isinstance(exc_info.value.__cause__, requests.exceptions.ProxyError)
+    assert (len(responses.calls), sleeps) == (1, [])
