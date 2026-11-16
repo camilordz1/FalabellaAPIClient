@@ -198,7 +198,7 @@ class FalabellaClient:
 
     @staticmethod
     def _is_retryable(method: str, status_code: int, error_code: Optional[str]) -> bool:
-        if status_code == 429 or error_code == "429":
+        if status_code == 429 or (error_code is not None and str(error_code) == "429"):
             return True
         return status_code >= 500 and method == "GET"
 

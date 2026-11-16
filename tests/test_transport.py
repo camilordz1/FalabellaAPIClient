@@ -147,6 +147,14 @@ def test_error_code_429_in_body_is_retried():
 
 
 @responses.activate
+def test_error_code_429_as_int_is_retried():
+    add(responses.GET, 200, err(429))
+    add(responses.GET)
+    client, _ = make()
+    assert (get(client), len(responses.calls)) == (OK, 2)
+
+
+@responses.activate
 def test_retries_exhausted_raises_last_error():
     for _ in range(4):
         add(responses.GET, 429, err())
