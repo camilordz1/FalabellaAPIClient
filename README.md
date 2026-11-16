@@ -121,11 +121,22 @@ print("order:", order.get(100513))
 
 ---
 
-## Contribuciones y Desarrollo
+## Development
 
-Para realizar pruebas locales y contribuir:
-1. Asegúrate de instalar las dependencias de desarrollo (`requests`).
-2. Genera y corre pruebas unitarias usando `pytest` o scripts de integración locales.
+Set up a virtual environment and install the runtime package together with the dev
+dependencies:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt -e .
+```
+
+Run the test suite:
+
+```bash
+pytest
+```
 
 ## Licencia
 
