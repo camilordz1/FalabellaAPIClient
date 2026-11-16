@@ -35,7 +35,10 @@ client = FalabellaClient(
     user="email@example.com",
     key="_api_key_",
     service="falabella",  # "falabella" 
-    country="co"          # "co", "cl", "pe", "mx", etc.
+    country="co",         # "co", "cl", "pe", "mx", etc.
+    seller_id="ABC123",   # seller id shown in Seller Center under "Mi cuenta"
+    business_unit="FACO", # "FACL" (Chile), "FACO" (Colombia), "FAPE" (Peru)
+    integration_type="PROPIA",  # integrator name when you are not the seller
 )
 
 # 1. Obtener información de un producto
@@ -57,6 +60,13 @@ try:
 except FalabellaAPIError as e:
     print(f"Error con las órdenes: {e}")
 ```
+
+Falabella requires a `User-Agent` header in the form
+`SELLER_ID/TECHNOLOGY/TECHNOLOGY_VERSION/INTEGRATION_TYPE/BUSINESS_UNIT_CODE`
+(e.g. `ABC123/Python/3.12.1/PROPIA/FACO`). The client builds it from `seller_id`,
+`integration_type` and `business_unit`; the seller id is shown in Seller Center under
+"Mi cuenta". `seller_id` is optional for now: when missing, the client emits a `UserWarning`
+and sends no Falabella `User-Agent`. It will be mandatory in the next major version.
 
 ---
 
@@ -85,6 +95,9 @@ are capped at 60 seconds.
 | HTTP 5xx | retry | no retry |
 | `ConnectionError` / `Timeout` | retry | no retry |
 | Any other error | no retry | no retry |
+
+`payload` must be `None`, `str` or `bytes` (XML); other types raise `TypeError` before the request
+is sent.
 
 ---
 

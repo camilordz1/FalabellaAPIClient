@@ -1,7 +1,9 @@
 import logging
+import platform
 import time
+import warnings
 import requests
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List, Tuple, Union
 from datetime import datetime, timezone
 from hmac import HMAC
 from urllib import parse
@@ -67,9 +69,37 @@ def _parse_error_response(body: Any) -> Optional[Dict[str, Any]]:
 class FalabellaClient:
     """Cliente unificado para interactuar con la API de Falabella y Linio Seller Center."""
 
+    BUSINESS_UNITS = {"FACL", "FACO", "FAPE"}
+
+    @staticmethod
+    def _is_number(value: Any) -> bool:
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+    @classmethod
+    def _valid_timeout(cls, value: Any) -> bool:
+        if cls._is_number(value):
+            return value > 0
+        if isinstance(value, tuple) and len(value) == 2:
+            return all(cls._is_number(part) and part > 0 for part in value)
+        return False
+
+    @staticmethod
+    def _normalize_component(name: str, value: Any, allow_int: bool = False) -> str:
+        if allow_int and isinstance(value, int) and not isinstance(value, bool):
+            value = str(value)
+        if not isinstance(value, str):
+            raise ValueError(f"{name} must be a string")
+        value = value.strip()
+        if not value or "/" in value or any(ord(char) < 32 for char in value):
+            raise ValueError(
+                f"{name} must be non-empty and contain no '/' or control characters"
+            )
+        return value
+
     def __init__(self, user: str, key: str, service: str = "falabella", country: str = "co",
-                 *, timeout: float = 30.0, max_retries: int = 3,
-                 backoff_factor: float = 1.0) -> None:
+                 *, timeout: Union[float, Tuple[float, float]] = 30.0, max_retries: int = 3,
+                 backoff_factor: float = 1.0, seller_id: Optional[str] = None,
+                 business_unit: str = "FACO", integration_type: str = "PROPIA") -> None:
         """Inicializa el cliente de Falabella.
 
         Args:
@@ -80,7 +110,27 @@ class FalabellaClient:
             timeout (float, optional): Timeout de cada petición HTTP en segundos. Por defecto es 30.0.
             max_retries (int, optional): Reintentos máximos de peticiones transitorias. Por defecto es 3.
             backoff_factor (float, optional): Base del backoff exponencial. Por defecto es 1.0.
+            seller_id (str, optional): Seller id usado en el User-Agent requerido por Falabella.
+            business_unit (str, optional): Unidad de negocio ('FACL', 'FACO' o 'FAPE'). Por defecto 'FACO'.
+            integration_type (str, optional): Tipo de integración del User-Agent. Por defecto 'PROPIA'.
         """
+        if not self._valid_timeout(timeout):
+            raise ValueError(
+                "timeout must be a positive number or a (connect, read) tuple of positive numbers"
+            )
+        if (not isinstance(max_retries, int) or isinstance(max_retries, bool)
+                or max_retries < 0):
+            raise ValueError("max_retries must be an integer greater than or equal to 0")
+        if not self._is_number(backoff_factor) or backoff_factor < 0:
+            raise ValueError("backoff_factor must be a number greater than or equal to 0")
+
+        normalized_unit = business_unit.upper() if isinstance(business_unit, str) else ""
+        if normalized_unit not in self.BUSINESS_UNITS:
+            raise ValueError(f"business_unit must be one of {sorted(self.BUSINESS_UNITS)}")
+        if seller_id is not None:
+            seller_id = self._normalize_component("seller_id", seller_id, allow_int=True)
+        integration_type = self._normalize_component("integration_type", integration_type)
+
         self.user = user
         self.key = key
         self.service = service.lower()
@@ -88,6 +138,9 @@ class FalabellaClient:
         self.timeout = timeout
         self.max_retries = max_retries
         self.backoff_factor = backoff_factor
+        self.seller_id = seller_id
+        self.business_unit = normalized_unit
+        self.integration_type = integration_type
         self._sleep = time.sleep
 
         # Configurar URL base
@@ -100,6 +153,18 @@ class FalabellaClient:
         self.session.headers.update({
             'Accept': 'application/json'
         })
+        if seller_id is not None:
+            self.session.headers["User-Agent"] = (
+                f"{seller_id}/Python/{platform.python_version()}/"
+                f"{integration_type}/{normalized_unit}"
+            )
+        else:
+            warnings.warn(
+                "The User-Agent required by Falabella is missing: pass seller_id. "
+                "It will be mandatory in the next major version.",
+                UserWarning,
+                stacklevel=2,
+            )
 
     @property
     def products(self) -> 'Products':
@@ -178,7 +243,7 @@ class FalabellaClient:
         elif isinstance(payload, bytes):
             body = payload
         else:
-            return payload, merged_headers
+            raise TypeError("payload must be None, str or bytes")
 
         if not any(name.lower() == "content-type" for name in merged_headers):
             merged_headers["Content-Type"] = "application/xml; charset=utf-8"
@@ -245,6 +310,8 @@ class FalabellaClient:
             except requests.RequestException as e:
                 if (http_method == "GET"
                         and isinstance(e, (requests.ConnectionError, requests.Timeout))
+                        and not isinstance(e, (requests.exceptions.SSLError,
+                                               requests.exceptions.ProxyError))
                         and attempt <= self.max_retries):
                     delay = self._retry_delay(attempt, None)
                     logger.warning(
