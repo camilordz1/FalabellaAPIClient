@@ -2,7 +2,7 @@
 
 Este módulo permite interactuar de manera sencilla y eficiente con la API de Falabella Seller Center para administrar productos, categorías, órdenes, despachos y datos del vendedor.
 
-El cliente ha sido rediseñado utilizando una **arquitectura basada en composición y propiedades perezosas (lazy properties)** para ofrecer una interfaz unificada y moderna, manteniendo al mismo tiempo compatibilidad del 100% con integraciones previas.
+El cliente ha sido rediseñado utilizando una **arquitectura basada en composición y propiedades perezosas (lazy properties)** para ofrecer una interfaz unificada y moderna. La versión anterior y el soporte de Linio se eliminaron; consulta la sección **Breaking changes** para migrar.
 
 ---
 
