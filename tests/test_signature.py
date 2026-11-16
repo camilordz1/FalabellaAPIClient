@@ -7,7 +7,7 @@ import pytest
 from freezegun import freeze_time
 
 FROZEN_TIME = "2026-01-15T10:30:00Z"
-FROZEN_TIMESTAMP = "2026-01-15T10:30:00Z"
+GOLDEN_SIGNATURE = "ab590d19c3315c1e93e364e0b5055d98b732b0c30021f0e5fa6fb3f055a9b024"
 
 
 def _reference_signature(params, key):
@@ -24,7 +24,7 @@ def test_signature_includes_base_params(client):
     assert result["UserID"] == "seller@example.com"
     assert result["Version"] == "1.0"
     assert result["Format"] == "JSON"
-    assert result["Timestamp"] == FROZEN_TIMESTAMP
+    assert result["Timestamp"] == FROZEN_TIME
     assert "Signature" in result
 
 
@@ -43,11 +43,12 @@ def test_signature_matches_reference_hmac(client):
         "UserID": "seller@example.com",
         "Version": "1.0",
         "Format": "JSON",
-        "Timestamp": FROZEN_TIMESTAMP,
+        "Timestamp": FROZEN_TIME,
     }
     expected = _reference_signature(expected_params, "test-api-key")
 
     assert result["Signature"] == expected
+    assert result["Signature"] == GOLDEN_SIGNATURE
 
 
 @freeze_time(FROZEN_TIME)
@@ -81,7 +82,7 @@ def test_space_encoding_current_behavior(client):
             "UserID": "seller@example.com",
             "Version": "1.0",
             "Format": "JSON",
-            "Timestamp": FROZEN_TIMESTAMP,
+            "Timestamp": FROZEN_TIME,
             "Search": "red shoe",
         }.items()
     )
