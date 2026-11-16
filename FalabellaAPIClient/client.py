@@ -89,6 +89,13 @@ class FalabellaClient:
             business_unit (str, optional): Unidad de negocio ('FACL', 'FACO' o 'FAPE'). Por defecto 'FACO'.
             integration_type (str, optional): Tipo de integración del User-Agent. Por defecto 'PROPIA'.
         """
+        if timeout <= 0:
+            raise ValueError("timeout must be greater than 0")
+        if not isinstance(max_retries, int) or max_retries < 0:
+            raise ValueError("max_retries must be an integer greater than or equal to 0")
+        if backoff_factor < 0:
+            raise ValueError("backoff_factor must be greater than or equal to 0")
+
         normalized_unit = business_unit.upper() if isinstance(business_unit, str) else ""
         if normalized_unit not in self.BUSINESS_UNITS:
             raise ValueError(f"business_unit must be one of {sorted(self.BUSINESS_UNITS)}")
@@ -209,7 +216,7 @@ class FalabellaClient:
         elif isinstance(payload, bytes):
             body = payload
         else:
-            return payload, merged_headers
+            raise TypeError("payload must be None, str or bytes")
 
         if not any(name.lower() == "content-type" for name in merged_headers):
             merged_headers["Content-Type"] = "application/xml; charset=utf-8"

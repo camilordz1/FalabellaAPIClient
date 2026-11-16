@@ -219,3 +219,72 @@ def test_get_does_not_retry_proxy_error():
         get(client)
     assert isinstance(exc_info.value.__cause__, requests.exceptions.ProxyError)
     assert (len(responses.calls), sleeps) == (1, [])
+
+
+@responses.activate
+def test_get_retries_on_timeout_then_succeeds():
+    responses.add(responses.GET, URL, body=requests.Timeout("timed out"))
+    add(responses.GET)
+    client, sleeps = make()
+    assert (get(client), len(responses.calls), sleeps) == (OK, 2, [1.0])
+
+
+@responses.activate
+def test_post_does_not_retry_on_timeout():
+    responses.add(responses.POST, URL, body=requests.Timeout("timed out"))
+    client, sleeps = make()
+    with pytest.raises(FalabellaAPIError) as exc_info:
+        client.query("POST", {"Action": "ProductUpdate"}, payload=XML)
+    assert isinstance(exc_info.value.__cause__, requests.Timeout)
+    assert (len(responses.calls), sleeps) == (1, [])
+
+
+@responses.activate
+def test_http_date_retry_after_falls_back_to_backoff():
+    add(responses.GET, 429, err(), headers={"Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"})
+    add(responses.GET)
+    client, sleeps = make()
+    get(client)
+    assert sleeps == [1.0]
+
+
+@responses.activate
+def test_retry_after_on_get_500_is_respected():
+    add(responses.GET, 500, err("5", "Server Error"), headers={"Retry-After": "3"})
+    add(responses.GET)
+    client, sleeps = make()
+    get(client)
+    assert sleeps == [3.0]
+
+
+@responses.activate
+def test_negative_retry_after_is_clamped_to_zero():
+    add(responses.GET, 429, err(), headers={"Retry-After": "-5"})
+    add(responses.GET)
+    client, sleeps = make()
+    get(client)
+    assert sleeps == [0.0]
+
+
+@responses.activate
+def test_bytes_payload_is_sent_as_is_with_xml_content_type(client):
+    add(responses.POST)
+    client.query("POST", {"Action": "ProductUpdate"}, payload=XML.encode("utf-8"))
+    request = responses.calls[0].request
+    assert request.body == XML.encode("utf-8")
+    assert request.headers["Content-Type"] == "application/xml; charset=utf-8"
+
+
+@pytest.mark.parametrize("payload", [{"Name": "x"}, iter([b"x"])])
+def test_unsupported_payload_type_raises_type_error(client, payload):
+    with pytest.raises(TypeError):
+        client.query("POST", {"Action": "ProductUpdate"}, payload=payload)
+    assert len(responses.calls) == 0
+
+
+@pytest.mark.parametrize(
+    "options", [{"timeout": 0}, {"timeout": -1}, {"max_retries": -1}, {"backoff_factor": -0.1}]
+)
+def test_invalid_transport_options_raise(options):
+    with pytest.raises(ValueError):
+        FalabellaClient(user="seller@example.com", key="test-api-key", seller_id="ABC123", **options)
