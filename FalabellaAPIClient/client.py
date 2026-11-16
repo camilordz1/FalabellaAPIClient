@@ -71,6 +71,19 @@ class FalabellaClient:
 
     BUSINESS_UNITS = {"FACL", "FACO", "FAPE"}
 
+    @staticmethod
+    def _normalize_component(name: str, value: Any, allow_int: bool = False) -> str:
+        if allow_int and isinstance(value, int) and not isinstance(value, bool):
+            value = str(value)
+        if not isinstance(value, str):
+            raise ValueError(f"{name} must be a string")
+        value = value.strip()
+        if not value or "/" in value or any(ord(char) < 32 for char in value):
+            raise ValueError(
+                f"{name} must be non-empty and contain no '/' or control characters"
+            )
+        return value
+
     def __init__(self, user: str, key: str, service: str = "falabella", country: str = "co",
                  *, timeout: float = 30.0, max_retries: int = 3,
                  backoff_factor: float = 1.0, seller_id: Optional[str] = None,
@@ -99,10 +112,9 @@ class FalabellaClient:
         normalized_unit = business_unit.upper() if isinstance(business_unit, str) else ""
         if normalized_unit not in self.BUSINESS_UNITS:
             raise ValueError(f"business_unit must be one of {sorted(self.BUSINESS_UNITS)}")
-        if seller_id is not None and (not seller_id or "/" in seller_id):
-            raise ValueError("seller_id must be a non-empty string without '/'")
-        if not integration_type or "/" in integration_type:
-            raise ValueError("integration_type must be a non-empty string without '/'")
+        if seller_id is not None:
+            seller_id = self._normalize_component("seller_id", seller_id, allow_int=True)
+        integration_type = self._normalize_component("integration_type", integration_type)
 
         self.user = user
         self.key = key

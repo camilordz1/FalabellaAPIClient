@@ -89,3 +89,32 @@ def test_caller_user_agent_header_wins():
     )
 
     assert responses.calls[0].request.headers["User-Agent"] == "custom/1.0"
+
+
+@responses.activate
+def test_numeric_seller_id_is_converted_to_string():
+    responses.add(responses.GET, URL, json=OK)
+    client = make(seller_id=12345)
+
+    client.query("GET", {"Action": "GetProducts"})
+
+    user_agent = responses.calls[0].request.headers["User-Agent"]
+    assert user_agent.startswith(f"12345/Python/{platform.python_version()}/")
+    assert user_agent.endswith("/PROPIA/FACO")
+
+
+@pytest.mark.parametrize("seller_id", ["", "   ", "AB/C", "AB\r\nX-Evil: 1", 3.5])
+def test_invalid_seller_id_raises(seller_id):
+    with pytest.raises(ValueError):
+        make(seller_id=seller_id)
+
+
+@pytest.mark.parametrize("integration_type", [None, "", "   ", "A/B", 3.5])
+def test_invalid_integration_type_raises(integration_type):
+    with pytest.raises(ValueError):
+        make(seller_id="ABC123", integration_type=integration_type)
+
+
+def test_non_string_business_unit_raises():
+    with pytest.raises(ValueError):
+        make(seller_id="ABC123", business_unit=123)
