@@ -60,6 +60,34 @@ except FalabellaAPIError as e:
 
 ---
 
+## Timeouts and retries
+
+`FalabellaClient` accepts keyword-only transport options:
+
+```python
+client = FalabellaClient(
+    user="email@example.com",
+    key="_api_key_",
+    timeout=30.0,        # seconds per request
+    max_retries=3,       # retries after the first attempt
+    backoff_factor=1.0,  # exponential backoff base
+)
+```
+
+Requests that were not processed are retried up to `1 + max_retries` attempts. Delays use a
+numeric `Retry-After` header when present, otherwise `backoff_factor * 2 ** (attempt - 1)`, and
+are capped at 60 seconds.
+
+| Condition | GET | POST (writes) |
+|---|---|---|
+| HTTP 429 | retry | retry |
+| `ErrorResponse` with `ErrorCode` `429` | retry | retry |
+| HTTP 5xx | retry | no retry |
+| `ConnectionError` / `Timeout` | retry | no retry |
+| Any other error | no retry | no retry |
+
+---
+
 ## Recursos Disponibles
 
 El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades perezosas:

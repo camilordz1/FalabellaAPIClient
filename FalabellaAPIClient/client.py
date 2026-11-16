@@ -1,6 +1,7 @@
 import logging
+import time
 import requests
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timezone
 from hmac import HMAC
 from urllib import parse
@@ -66,7 +67,9 @@ def _parse_error_response(body: Any) -> Optional[Dict[str, Any]]:
 class FalabellaClient:
     """Cliente unificado para interactuar con la API de Falabella y Linio Seller Center."""
 
-    def __init__(self, user: str, key: str, service: str = "falabella", country: str = "co") -> None:
+    def __init__(self, user: str, key: str, service: str = "falabella", country: str = "co",
+                 *, timeout: float = 30.0, max_retries: int = 3,
+                 backoff_factor: float = 1.0) -> None:
         """Inicializa el cliente de Falabella.
 
         Args:
@@ -74,11 +77,18 @@ class FalabellaClient:
             key (str): Llave API (API Key).
             service (str, optional): Servicio a usar ('falabella' o 'linio'). Por defecto es 'falabella'.
             country (str, optional): Código del país. Por defecto es 'co'.
+            timeout (float, optional): Timeout de cada petición HTTP en segundos. Por defecto es 30.0.
+            max_retries (int, optional): Reintentos máximos de peticiones transitorias. Por defecto es 3.
+            backoff_factor (float, optional): Base del backoff exponencial. Por defecto es 1.0.
         """
         self.user = user
         self.key = key
         self.service = service.lower()
         self.country = country.lower()
+        self.timeout = timeout
+        self.max_retries = max_retries
+        self.backoff_factor = backoff_factor
+        self._sleep = time.sleep
 
         # Configurar URL base
         if self.service == "falabella":
@@ -88,8 +98,7 @@ class FalabellaClient:
 
         self.session = requests.Session()
         self.session.headers.update({
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Accept': 'application/json'
         })
 
     @property
@@ -156,6 +165,43 @@ class FalabellaClient:
 
         return params
 
+    def _prepare_request(self, payload: Optional[Any],
+                         headers: Dict[str, str]) -> Tuple[Optional[Any], Dict[str, str]]:
+        """Build body and headers, encoding str/bytes payloads as UTF-8 XML."""
+        merged_headers = dict(self.session.headers)
+        merged_headers.update(headers)
+
+        if payload is None:
+            return None, merged_headers
+        if isinstance(payload, str):
+            body = payload.encode("utf-8")
+        elif isinstance(payload, bytes):
+            body = payload
+        else:
+            return payload, merged_headers
+
+        if not any(name.lower() == "content-type" for name in merged_headers):
+            merged_headers["Content-Type"] = "application/xml; charset=utf-8"
+        return body, merged_headers
+
+    @staticmethod
+    def _retry_after_seconds(response: requests.Response) -> Optional[float]:
+        value = response.headers.get("Retry-After")
+        try:
+            return float(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    def _retry_delay(self, attempt: int, retry_after: Optional[float]) -> float:
+        delay = retry_after if retry_after is not None else self.backoff_factor * (2 ** (attempt - 1))
+        return max(0.0, min(delay, 60.0))
+
+    @staticmethod
+    def _is_retryable(method: str, status_code: int, error_code: Optional[str]) -> bool:
+        if status_code == 429 or error_code == "429":
+            return True
+        return status_code >= 500 and method == "GET"
+
     def query(self, method: str, params: Optional[Dict[str, Any]] = None,
               payload: Optional[Any] = None, headers: Optional[Dict[str, str]] = None) -> Any:
         """Realiza una petición HTTP a la API de Falabella y maneja errores.
@@ -177,74 +223,97 @@ class FalabellaClient:
         if headers is None:
             headers = {}
 
-        merged_headers = dict(self.session.headers)
-        merged_headers.update(headers)
-
-        signed_params = self.signature(params)
+        http_method = method.upper()
         action = params.get("Action", "UnknownAction")
+        body, merged_headers = self._prepare_request(payload, headers)
 
-        try:
-            response = self.session.request(
-                method=method.upper(),
-                url=self.url,
-                params=signed_params,
-                data=payload,
-                headers=merged_headers
-            )
-        except requests.RequestException as e:
-            logger.error(f"HTTP Request failed for action {action}: {e}")
-            raise FalabellaAPIError(f"HTTP request failed: {e}") from e
+        attempt = 0
+        while True:
+            attempt += 1
+            # The timestamp is part of the signature, so re-sign every attempt.
+            signed_params = self.signature(params)
 
-        # Comprobar si el código de estado es de éxito
-        if 200 <= response.status_code < 300:
-            logger.info(f"{method.upper()} - {action} - Exitosa (Status: {response.status_code})")
-            if not response.text.strip():
-                return {}
             try:
-                parsed = response.json()
-            except ValueError:
-                return {"response_text": response.text}
-
-            error = _parse_error_response(parsed)
-            if error is not None:
-                error_msg = error["message"] or f"Error en la API (Status: {response.status_code})"
-                logger.warning(f"{method.upper()} - {action} - Fallida: {error_msg}")
-                raise FalabellaAPIError(
-                    error_msg,
-                    status_code=response.status_code,
-                    response_body=response.text,
-                    error_code=error["code"],
-                    error_type=error["type"],
-                    action=action,
-                    details=error["details"],
+                response = self.session.request(
+                    method=http_method,
+                    url=self.url,
+                    params=signed_params,
+                    data=body,
+                    headers=merged_headers,
+                    timeout=self.timeout,
                 )
-            return parsed
+            except requests.RequestException as e:
+                if (http_method == "GET"
+                        and isinstance(e, (requests.ConnectionError, requests.Timeout))
+                        and attempt <= self.max_retries):
+                    delay = self._retry_delay(attempt, None)
+                    logger.warning(
+                        f"{http_method} - {action} - Retry {attempt}/{self.max_retries} "
+                        f"in {delay}s: {e}"
+                    )
+                    self._sleep(delay)
+                    continue
+                logger.error(f"HTTP Request failed for action {action}: {e}")
+                raise FalabellaAPIError(f"HTTP request failed: {e}") from e
 
-        # Manejo de errores de la API
-        error_msg = f"Error en la API (Status: {response.status_code})"
-        error = None
-        try:
-            res_json = response.json()
-        except ValueError:
-            if response.text:
-                error_msg = response.text
-        else:
-            error = _parse_error_response(res_json)
-            if error is not None:
-                error_msg = error["message"] or error_msg
-            elif isinstance(res_json, dict) and "SuccessResponse" in res_json:
-                # En algunos casos un status 4xx o 5xx puede tener un mensaje descriptivo
-                head = res_json["SuccessResponse"].get("Head", {})
-                if head.get("ErrorMessage"):
-                    error_msg = head.get("ErrorMessage")
+            retry_after = self._retry_after_seconds(response)
+            error = None
 
-        logger.warning(f"{method.upper()} - {action} - Fallida: {error_msg}")
-        raise FalabellaAPIError(
-            error_msg,
-            status_code=response.status_code,
-            response_body=response.text,
-            error_code=error["code"] if error else None,
-            error_type=error["type"] if error else None,
-            action=action,
-            details=error["details"] if error else [],
-        )
+            if 200 <= response.status_code < 300:
+                logger.info(
+                    f"{http_method} - {action} - Exitosa (Status: {response.status_code})"
+                )
+                if not response.text.strip():
+                    return {}
+                try:
+                    parsed = response.json()
+                except ValueError:
+                    return {"response_text": response.text}
+
+                error = _parse_error_response(parsed)
+                if error is None:
+                    return parsed
+
+                error_msg = error["message"] or (
+                    f"Error en la API (Status: {response.status_code})"
+                )
+                error_code = error["code"]
+            else:
+                error_msg = f"Error en la API (Status: {response.status_code})"
+                error_code = None
+                try:
+                    res_json = response.json()
+                except ValueError:
+                    if response.text:
+                        error_msg = response.text
+                else:
+                    error = _parse_error_response(res_json)
+                    if error is not None:
+                        error_msg = error["message"] or error_msg
+                        error_code = error["code"]
+                    elif isinstance(res_json, dict) and "SuccessResponse" in res_json:
+                        # Some 4xx/5xx responses carry a descriptive message here.
+                        head = res_json["SuccessResponse"].get("Head", {})
+                        if head.get("ErrorMessage"):
+                            error_msg = head.get("ErrorMessage")
+
+            if (self._is_retryable(http_method, response.status_code, error_code)
+                    and attempt <= self.max_retries):
+                delay = self._retry_delay(attempt, retry_after)
+                logger.warning(
+                    f"{http_method} - {action} - Retry {attempt}/{self.max_retries} "
+                    f"in {delay}s: {error_msg}"
+                )
+                self._sleep(delay)
+                continue
+
+            logger.warning(f"{http_method} - {action} - Fallida: {error_msg}")
+            raise FalabellaAPIError(
+                error_msg,
+                status_code=response.status_code,
+                response_body=response.text,
+                error_code=error_code,
+                error_type=error["type"] if error else None,
+                action=action,
+                details=error["details"] if error else [],
+            )
