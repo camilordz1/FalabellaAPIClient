@@ -1,5 +1,7 @@
 import logging
+import platform
 import time
+import warnings
 import requests
 from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timezone
@@ -67,9 +69,12 @@ def _parse_error_response(body: Any) -> Optional[Dict[str, Any]]:
 class FalabellaClient:
     """Cliente unificado para interactuar con la API de Falabella y Linio Seller Center."""
 
+    BUSINESS_UNITS = {"FACL", "FACO", "FAPE"}
+
     def __init__(self, user: str, key: str, service: str = "falabella", country: str = "co",
                  *, timeout: float = 30.0, max_retries: int = 3,
-                 backoff_factor: float = 1.0) -> None:
+                 backoff_factor: float = 1.0, seller_id: Optional[str] = None,
+                 business_unit: str = "FACO", integration_type: str = "PROPIA") -> None:
         """Inicializa el cliente de Falabella.
 
         Args:
@@ -80,7 +85,18 @@ class FalabellaClient:
             timeout (float, optional): Timeout de cada petición HTTP en segundos. Por defecto es 30.0.
             max_retries (int, optional): Reintentos máximos de peticiones transitorias. Por defecto es 3.
             backoff_factor (float, optional): Base del backoff exponencial. Por defecto es 1.0.
+            seller_id (str, optional): Seller id usado en el User-Agent requerido por Falabella.
+            business_unit (str, optional): Unidad de negocio ('FACL', 'FACO' o 'FAPE'). Por defecto 'FACO'.
+            integration_type (str, optional): Tipo de integración del User-Agent. Por defecto 'PROPIA'.
         """
+        normalized_unit = business_unit.upper() if isinstance(business_unit, str) else ""
+        if normalized_unit not in self.BUSINESS_UNITS:
+            raise ValueError(f"business_unit must be one of {sorted(self.BUSINESS_UNITS)}")
+        if seller_id is not None and (not seller_id or "/" in seller_id):
+            raise ValueError("seller_id must be a non-empty string without '/'")
+        if not integration_type or "/" in integration_type:
+            raise ValueError("integration_type must be a non-empty string without '/'")
+
         self.user = user
         self.key = key
         self.service = service.lower()
@@ -88,6 +104,9 @@ class FalabellaClient:
         self.timeout = timeout
         self.max_retries = max_retries
         self.backoff_factor = backoff_factor
+        self.seller_id = seller_id
+        self.business_unit = normalized_unit
+        self.integration_type = integration_type
         self._sleep = time.sleep
 
         # Configurar URL base
@@ -100,6 +119,18 @@ class FalabellaClient:
         self.session.headers.update({
             'Accept': 'application/json'
         })
+        if seller_id is not None:
+            self.session.headers["User-Agent"] = (
+                f"{seller_id}/Python/{platform.python_version()}/"
+                f"{integration_type}/{normalized_unit}"
+            )
+        else:
+            warnings.warn(
+                "The User-Agent required by Falabella is missing: pass seller_id. "
+                "It will be mandatory in the next major version.",
+                UserWarning,
+                stacklevel=2,
+            )
 
     @property
     def products(self) -> 'Products':
