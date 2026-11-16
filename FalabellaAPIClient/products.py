@@ -1,28 +1,20 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, TYPE_CHECKING
 from FalabellaAPIClient.actions import Actions
+
+if TYPE_CHECKING:
+    from FalabellaAPIClient.client import FalabellaClient
 
 
 class Products(Actions):
-    """Operaciones relacionadas con el recurso de Productos en la API de Falabella/Linio."""
+    """Operaciones relacionadas con el recurso de Productos en la API de Falabella."""
 
-    def __init__(self, service_or_client: Any = None, session: Any = None) -> None:
-        """Inicializa el recurso de Productos.
+    def __init__(self, client: "FalabellaClient") -> None:
+        """Initialize the resource with an authenticated client.
 
         Args:
-            service_or_client (Any, optional): Instancia de FalabellaClient (nueva arquitectura)
-                o Service (arquitectura heredada).
-            session (Any, optional): Instancia de Session (solo para arquitectura heredada).
+            client (FalabellaClient): An initialized Falabella client.
         """
-        if session is not None:
-            # Compatibilidad con arquitectura heredada
-            self.service = service_or_client
-            self.session = session
-            self._legacy = True
-            super().__init__(None)
-        else:
-            # Nueva arquitectura basada en composición
-            super().__init__(service_or_client)
-            self._legacy = False
+        super().__init__(client)
 
     def get(self, limit: int = 1000, **kwargs: Any) -> Dict[str, Any]:
         """Obtiene información de uno o varios productos.
@@ -42,8 +34,6 @@ class Products(Actions):
         if kwargs:
             params.update(kwargs)
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'get', params)
         return self.client.query('get', params=params)
 
     def create(self, payload: Any) -> Dict[str, Any]:
@@ -59,8 +49,6 @@ class Products(Actions):
             "Action": "ProductCreate"
         }
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'post', params, payload)
         return self.client.query('post', params=params, payload=payload)
 
     def update(self, payload: Any) -> Dict[str, Any]:
@@ -76,8 +64,6 @@ class Products(Actions):
             "Action": "ProductUpdate"
         }
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'post', params, payload)
         return self.client.query('post', params=params, payload=payload)
 
     def remove(self, payload: Any) -> Dict[str, Any]:
@@ -93,8 +79,6 @@ class Products(Actions):
             "Action": "ProductRemove"
         }
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'post', params, payload)
         return self.client.query('post', params=params, payload=payload)
 
     def brands(self) -> Dict[str, Any]:
@@ -107,8 +91,6 @@ class Products(Actions):
             "Action": "GetBrands"
         }
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'get', params)
         return self.client.query('get', params=params)
 
     def get_category_tree(self) -> Dict[str, Any]:
@@ -121,8 +103,6 @@ class Products(Actions):
             "Action": "GetCategoryTree"
         }
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'get', params)
         return self.client.query('get', params=params)
 
     def get_category_attributes(self, primary_category_id: int) -> Dict[str, Any]:
@@ -139,6 +119,4 @@ class Products(Actions):
             "PrimaryCategory": primary_category_id
         }
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'get', params)
         return self.client.query('get', params=params)

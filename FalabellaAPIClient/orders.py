@@ -1,29 +1,21 @@
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 from FalabellaAPIClient.actions import Actions
+
+if TYPE_CHECKING:
+    from FalabellaAPIClient.client import FalabellaClient
 
 
 class Orders(Actions):
-    """Operaciones relacionadas con el recurso de Órdenes en la API de Falabella/Linio."""
+    """Operaciones relacionadas con el recurso de Órdenes en la API de Falabella."""
 
-    def __init__(self, service_or_client: Any = None, session: Any = None) -> None:
-        """Inicializa el recurso de Órdenes.
+    def __init__(self, client: "FalabellaClient") -> None:
+        """Initialize the resource with an authenticated client.
 
         Args:
-            service_or_client (Any, optional): Instancia de FalabellaClient (nueva arquitectura)
-                o Service (arquitectura heredada).
-            session (Any, optional): Instancia de Session (solo para arquitectura heredada).
+            client (FalabellaClient): An initialized Falabella client.
         """
-        if session is not None:
-            # Compatibilidad con arquitectura heredada
-            self.service = service_or_client
-            self.session = session
-            self._legacy = True
-            super().__init__(None)
-        else:
-            # Nueva arquitectura basada en composición
-            super().__init__(service_or_client)
-            self._legacy = False
+        super().__init__(client)
 
     def list(self, **kwargs: Any) -> Dict[str, Any]:
         """Busca una lista de órdenes.
@@ -38,8 +30,6 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'get', params)
         return self.client.query('get', params=params)
 
     def get(self, order_id: Union[int, str], **kwargs: Any) -> Dict[str, Any]:
@@ -59,8 +49,6 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'get', params)
         return self.client.query('get', params=params)
 
     def items(self, order_id: Union[int, str], template: str = "JSON") -> Dict[str, Any]:
@@ -79,8 +67,6 @@ class Orders(Actions):
             "Format": template
         }
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'get', params)
         return self.client.query('get', params=params)
 
     def multiple_order_items(self, order_id_list: Union[List[Union[int, str]], str],
@@ -103,8 +89,6 @@ class Orders(Actions):
             "OrderIdList": order_id_list
         }
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'get', params)
         return self.client.query('get', params=params)
 
     def set_status_to_packed_by_marketplace(self, order_item_ids: Union[List[Union[int, str]], str],
@@ -130,8 +114,6 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'post', params)
         return self.client.query('post', params=params)
 
     def set_status_to_ready_to_ship(self, order_item_ids: Union[List[Union[int, str]], str],
@@ -159,8 +141,6 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'post', params)
         return self.client.query('post', params=params)
 
     def set_status_to_shipped(self, order_item_ids: Union[List[Union[int, str]], str],
@@ -183,8 +163,6 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'post', params)
         return self.client.query('post', params=params)
 
     def set_status_to_delivered(self, order_item_ids: Union[List[Union[int, str]], str],
@@ -205,8 +183,6 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'post', params)
         return self.client.query('post', params=params)
 
     def set_status_to_failed(self, order_item_ids: Union[List[Union[int, str]], str],
@@ -233,8 +209,6 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'post', params)
         return self.client.query('post', params=params)
 
     def set_status_to_cancelled(self, order_item_ids: Union[List[Union[int, str]], str],
@@ -261,6 +235,4 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'post', params)
         return self.client.query('post', params=params)

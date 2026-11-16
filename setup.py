@@ -22,7 +22,7 @@ setup(
     author=AUTHOR,
     author_email=EMAIL,
     url=GITHUB_URL,
-    keywords=['python', 'falabella', 'linio', 'seller center', 'api client'],
+    keywords=['python', 'falabella', 'seller center', 'api client'],
     install_requires=[
         'requests',
     ],

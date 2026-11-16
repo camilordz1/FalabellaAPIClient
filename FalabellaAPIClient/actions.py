@@ -5,7 +5,7 @@ if TYPE_CHECKING:
 
 
 class Actions:
-    """Clase base para todos los recursos de la API de Falabella/Linio Seller Center."""
+    """Clase base para todos los recursos de la API de Falabella Seller Center."""
 
     def __init__(self, client: Optional['FalabellaClient'] = None) -> None:
         """Inicializa el recurso con una referencia al cliente unificado.

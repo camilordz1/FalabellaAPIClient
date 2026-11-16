@@ -1,26 +1,20 @@
-from typing import Any, Dict
+from typing import Any, Dict, TYPE_CHECKING
 from FalabellaAPIClient.actions import Actions
+
+if TYPE_CHECKING:
+    from FalabellaAPIClient.client import FalabellaClient
 
 
 class Seller(Actions):
-    """Operaciones relacionadas con el perfil del Vendedor en la API de Falabella/Linio."""
+    """Operaciones relacionadas con el perfil del Vendedor en la API de Falabella."""
 
-    def __init__(self, service_or_client: Any = None, session: Any = None) -> None:
-        """Inicializa el recurso del Vendedor.
+    def __init__(self, client: "FalabellaClient") -> None:
+        """Initialize the resource with an authenticated client.
 
         Args:
-            service_or_client (Any, optional): Instancia de FalabellaClient (nueva arquitectura)
-                o Service (arquitectura heredada).
-            session (Any, optional): Instancia de Session (solo para arquitectura heredada).
+            client (FalabellaClient): An initialized Falabella client.
         """
-        if session is not None:
-            self.service = service_or_client
-            self.session = session
-            self._legacy = True
-            super().__init__(None)
-        else:
-            super().__init__(service_or_client)
-            self._legacy = False
+        super().__init__(client)
 
     def get(self) -> Dict[str, Any]:
         """Obtiene la información y estado de la cuenta del vendedor.
@@ -32,6 +26,4 @@ class Seller(Actions):
             "Action": "GetSeller"
         }
 
-        if getattr(self, '_legacy', False):
-            return self.service.request(self.session, 'get', params)
         return self.client.query('get', params=params)

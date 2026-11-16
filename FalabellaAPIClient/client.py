@@ -67,7 +67,7 @@ def _parse_error_response(body: Any) -> Optional[Dict[str, Any]]:
 
 
 class FalabellaClient:
-    """Cliente unificado para interactuar con la API de Falabella y Linio Seller Center."""
+    """Cliente unificado para interactuar con la API de Falabella Seller Center."""
 
     BUSINESS_UNITS = {"FACL", "FACO", "FAPE"}
 
@@ -96,7 +96,7 @@ class FalabellaClient:
             )
         return value
 
-    def __init__(self, user: str, key: str, service: str = "falabella", country: str = "co",
+    def __init__(self, user: str, key: str,
                  *, timeout: Union[float, Tuple[float, float]] = 30.0, max_retries: int = 3,
                  backoff_factor: float = 1.0, seller_id: Optional[str] = None,
                  business_unit: str = "FACO", integration_type: str = "PROPIA") -> None:
@@ -105,8 +105,6 @@ class FalabellaClient:
         Args:
             user (str): Correo electrónico del usuario (UserID).
             key (str): Llave API (API Key).
-            service (str, optional): Servicio a usar ('falabella' o 'linio'). Por defecto es 'falabella'.
-            country (str, optional): Código del país. Por defecto es 'co'.
             timeout (float, optional): Timeout de cada petición HTTP en segundos. Por defecto es 30.0.
             max_retries (int, optional): Reintentos máximos de peticiones transitorias. Por defecto es 3.
             backoff_factor (float, optional): Base del backoff exponencial. Por defecto es 1.0.
@@ -133,8 +131,6 @@ class FalabellaClient:
 
         self.user = user
         self.key = key
-        self.service = service.lower()
-        self.country = country.lower()
         self.timeout = timeout
         self.max_retries = max_retries
         self.backoff_factor = backoff_factor
@@ -143,11 +139,7 @@ class FalabellaClient:
         self.integration_type = integration_type
         self._sleep = time.sleep
 
-        # Configurar URL base
-        if self.service == "falabella":
-            self.url = "https://sellercenter-api.falabella.com"
-        else:
-            self.url = f"https://sellercenter-api.linio.com.{self.country}"
+        self.url = "https://sellercenter-api.falabella.com"
 
         self.session = requests.Session()
         self.session.headers.update({

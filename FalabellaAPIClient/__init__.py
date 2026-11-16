@@ -4,10 +4,6 @@ from FalabellaAPIClient.orders import Orders
 from FalabellaAPIClient.seller import Seller
 from FalabellaAPIClient.shipments import Shipments
 
-# Importaciones para compatibilidad heredada (Legacy)
-from FalabellaAPIClient.session import Session
-from FalabellaAPIClient.service import Service
-
 __all__ = [
     'FalabellaClient',
     'FalabellaAPIError',
@@ -15,6 +11,4 @@ __all__ = [
     'Orders',
     'Seller',
     'Shipments',
-    'Session',
-    'Service',
 ]

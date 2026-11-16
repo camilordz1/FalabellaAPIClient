@@ -1,8 +1,8 @@
 # FalabellaAPIClient
 
-Este módulo permite interactuar de manera sencilla y eficiente con la API de Falabella y Linio Seller Center para administrar productos, categorías, órdenes, despachos y datos del vendedor.
+Este módulo permite interactuar de manera sencilla y eficiente con la API de Falabella Seller Center para administrar productos, categorías, órdenes, despachos y datos del vendedor.
 
-El cliente ha sido rediseñado utilizando una **arquitectura basada en composición y propiedades perezosas (lazy properties)** para ofrecer una interfaz unificada y moderna, manteniendo al mismo tiempo compatibilidad del 100% con integraciones previas.
+El cliente ha sido rediseñado utilizando una **arquitectura basada en composición y propiedades perezosas (lazy properties)** para ofrecer una interfaz unificada y moderna. La versión anterior y el soporte de Linio se eliminaron; consulta la sección **Breaking changes** para migrar.
 
 ---
 
@@ -34,8 +34,6 @@ from FalabellaAPIClient import FalabellaClient, FalabellaAPIError
 client = FalabellaClient(
     user="email@example.com",
     key="_api_key_",
-    service="falabella",  # "falabella" 
-    country="co",         # "co", "cl", "pe", "mx", etc.
     seller_id="ABC123",   # seller id shown in Seller Center under "Mi cuenta"
     business_unit="FACO", # "FACL" (Chile), "FACO" (Colombia), "FAPE" (Peru)
     integration_type="PROPIA",  # integrator name when you are not the seller
@@ -136,29 +134,27 @@ El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades
 
 ---
 
-## Compatibilidad Heredada (Legacy)
+## Breaking changes
 
-Si ya tienes implementaciones que usan la estructura original, estas **seguirán funcionando sin cambios**, aunque levantarán un `DeprecationWarning` sugiriendo la migración.
+- Linio support was removed; the client always targets `https://sellercenter-api.falabella.com`.
+- The `service` and `country` constructor parameters were removed.
+- The legacy `Session` and `Service` classes were removed. Use `FalabellaClient` and its resource
+  properties (`client.products`, `client.orders`, `client.seller`, `client.shipments`) instead.
 
 ```python
-from FalabellaAPIClient import Session, Products, Service, Orders
-import json
-
-# login legacy
-user = "email@example.com"
-key = "_api_key_"
-
+# Before
 session = Session(user, key, "falabella")
 service = Service()
-
-# Instanciar recursos pasando service y session individualmente
 items = Products(service, session)
-product_list = ["TP-19150"]
-item = items.get(SkuSellerList=json.dumps(product_list))
 
-order = Orders(service, session)
-print("order:", order.get(100513))
+# After
+from FalabellaAPIClient import FalabellaClient
+
+client = FalabellaClient(user=user, key=key, seller_id="ABC123")
+items = client.products
 ```
+
+See `examples/basic_usage.py` for a complete script driven by environment variables.
 
 ---
 
