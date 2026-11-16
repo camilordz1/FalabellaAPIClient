@@ -96,6 +96,9 @@ are capped at 60 seconds.
 | `ConnectionError` / `Timeout` | retry | no retry |
 | Any other error | no retry | no retry |
 
+`payload` must be `None`, `str` or `bytes` (XML); other types raise `TypeError` before the request
+is sent.
+
 ---
 
 ## Recursos Disponibles
