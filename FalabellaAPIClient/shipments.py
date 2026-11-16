@@ -1,6 +1,9 @@
 import json
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, TYPE_CHECKING
 from FalabellaAPIClient.actions import Actions
+
+if TYPE_CHECKING:
+    from FalabellaAPIClient.client import FalabellaClient
 
 
 class Shipments(Actions):
