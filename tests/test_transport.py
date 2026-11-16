@@ -275,8 +275,10 @@ def test_bytes_payload_is_sent_as_is_with_xml_content_type(client):
     assert request.headers["Content-Type"] == "application/xml; charset=utf-8"
 
 
+@responses.activate
 @pytest.mark.parametrize("payload", [{"Name": "x"}, iter([b"x"])])
 def test_unsupported_payload_type_raises_type_error(client, payload):
+    add(responses.POST)
     with pytest.raises(TypeError):
         client.query("POST", {"Action": "ProductUpdate"}, payload=payload)
     assert len(responses.calls) == 0
