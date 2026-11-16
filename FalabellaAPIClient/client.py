@@ -3,7 +3,7 @@ import platform
 import time
 import warnings
 import requests
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List, Tuple, Union
 from datetime import datetime, timezone
 from hmac import HMAC
 from urllib import parse
@@ -72,6 +72,18 @@ class FalabellaClient:
     BUSINESS_UNITS = {"FACL", "FACO", "FAPE"}
 
     @staticmethod
+    def _is_number(value: Any) -> bool:
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+    @classmethod
+    def _valid_timeout(cls, value: Any) -> bool:
+        if cls._is_number(value):
+            return value > 0
+        if isinstance(value, tuple) and len(value) == 2:
+            return all(cls._is_number(part) and part > 0 for part in value)
+        return False
+
+    @staticmethod
     def _normalize_component(name: str, value: Any, allow_int: bool = False) -> str:
         if allow_int and isinstance(value, int) and not isinstance(value, bool):
             value = str(value)
@@ -85,7 +97,7 @@ class FalabellaClient:
         return value
 
     def __init__(self, user: str, key: str, service: str = "falabella", country: str = "co",
-                 *, timeout: float = 30.0, max_retries: int = 3,
+                 *, timeout: Union[float, Tuple[float, float]] = 30.0, max_retries: int = 3,
                  backoff_factor: float = 1.0, seller_id: Optional[str] = None,
                  business_unit: str = "FACO", integration_type: str = "PROPIA") -> None:
         """Inicializa el cliente de Falabella.
@@ -102,12 +114,15 @@ class FalabellaClient:
             business_unit (str, optional): Unidad de negocio ('FACL', 'FACO' o 'FAPE'). Por defecto 'FACO'.
             integration_type (str, optional): Tipo de integración del User-Agent. Por defecto 'PROPIA'.
         """
-        if timeout <= 0:
-            raise ValueError("timeout must be greater than 0")
-        if not isinstance(max_retries, int) or max_retries < 0:
+        if not self._valid_timeout(timeout):
+            raise ValueError(
+                "timeout must be a positive number or a (connect, read) tuple of positive numbers"
+            )
+        if (not isinstance(max_retries, int) or isinstance(max_retries, bool)
+                or max_retries < 0):
             raise ValueError("max_retries must be an integer greater than or equal to 0")
-        if backoff_factor < 0:
-            raise ValueError("backoff_factor must be greater than or equal to 0")
+        if not self._is_number(backoff_factor) or backoff_factor < 0:
+            raise ValueError("backoff_factor must be a number greater than or equal to 0")
 
         normalized_unit = business_unit.upper() if isinstance(business_unit, str) else ""
         if normalized_unit not in self.BUSINESS_UNITS:

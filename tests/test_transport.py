@@ -290,3 +290,30 @@ def test_unsupported_payload_type_raises_type_error(client, payload):
 def test_invalid_transport_options_raise(options):
     with pytest.raises(ValueError):
         FalabellaClient(user="seller@example.com", key="test-api-key", seller_id="ABC123", **options)
+
+
+@responses.activate
+def test_timeout_tuple_is_passed_to_request():
+    add(responses.GET)
+    client, _ = make(timeout=(3.05, 27))
+    with patch.object(client.session, "request", wraps=client.session.request) as spy:
+        get(client)
+    assert spy.call_args.kwargs["timeout"] == (3.05, 27)
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"timeout": None},
+        {"timeout": (0, 5)},
+        {"timeout": "30"},
+        {"max_retries": True},
+        {"max_retries": 2.5},
+        {"backoff_factor": "1"},
+    ],
+)
+def test_invalid_transport_option_types_raise(options):
+    with pytest.raises(ValueError):
+        FalabellaClient(
+            user="seller@example.com", key="test-api-key", seller_id="ABC123", **options
+        )
