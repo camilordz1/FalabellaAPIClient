@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 import requests
 
 if TYPE_CHECKING:
+    from falabella_sdk.feeds import Feeds
     from falabella_sdk.orders import Orders
     from falabella_sdk.products import Products
     from falabella_sdk.seller import Seller
@@ -200,6 +201,14 @@ class FalabellaClient:
             from falabella_sdk.shipments import Shipments
             self._shipments = Shipments(self)
         return self._shipments
+
+    @property
+    def feeds(self) -> 'Feeds':
+        """Acceso a operaciones de feeds asíncronos."""
+        if not hasattr(self, '_feeds'):
+            from falabella_sdk.feeds import Feeds
+            self._feeds = Feeds(self)
+        return self._feeds
 
     def signature(self, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Genera el diccionario de parámetros incluyendo la firma HMAC-SHA256 y timestamp ISO 8601.
