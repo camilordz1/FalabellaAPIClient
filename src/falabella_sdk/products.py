@@ -1,6 +1,7 @@
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from falabella_sdk.actions import Actions
+from falabella_sdk.responses import FalabellaResponse, unwrap, unwrap_collection
 
 if TYPE_CHECKING:
     from falabella_sdk.client import FalabellaClient
@@ -17,7 +18,7 @@ class Products(Actions):
         """
         super().__init__(client)
 
-    def get(self, limit: int = 1000, **kwargs: Any) -> Dict[str, Any]:
+    def get(self, limit: int = 1000, **kwargs: Any) -> FalabellaResponse:
         """Obtiene información de uno o varios productos.
 
         Args:
@@ -25,7 +26,7 @@ class Products(Actions):
             **kwargs: Filtros adicionales (e.g., SkuSellerList, Search, CreatedAfter, etc.).
 
         Returns:
-            dict: Información de los productos devuelta por el servidor.
+            FalabellaResponse: Response with products in ``items``.
         """
         params = {
             "Action": "GetProducts",
@@ -35,9 +36,11 @@ class Products(Actions):
         if kwargs:
             params.update(kwargs)
 
-        return self.client.query('get', params=params)
+        return unwrap_collection(
+            self.client.query('get', params=params), "Products", "Product"
+        )
 
-    def create(self, payload: Any) -> Dict[str, Any]:
+    def create(self, payload: Any) -> FalabellaResponse:
         """Crea nuevos productos en la plataforma.
 
         Args:
@@ -45,80 +48,84 @@ class Products(Actions):
                 estructura de producto).
 
         Returns:
-            dict: Respuesta del servidor a la operación de creación.
+            FalabellaResponse: Response whose ``request_id`` is the feed id.
         """
         params = {
             "Action": "ProductCreate"
         }
 
-        return self.client.query('post', params=params, payload=payload)
+        return unwrap(self.client.query('post', params=params, payload=payload))
 
-    def update(self, payload: Any) -> Dict[str, Any]:
+    def update(self, payload: Any) -> FalabellaResponse:
         """Actualiza productos existentes.
 
         Args:
             payload (Any): Datos actualizados de los productos (estructura XML).
 
         Returns:
-            dict: Respuesta del servidor a la operación de actualización.
+            FalabellaResponse: Response whose ``request_id`` is the feed id.
         """
         params = {
             "Action": "ProductUpdate"
         }
 
-        return self.client.query('post', params=params, payload=payload)
+        return unwrap(self.client.query('post', params=params, payload=payload))
 
-    def remove(self, payload: Any) -> Dict[str, Any]:
+    def remove(self, payload: Any) -> FalabellaResponse:
         """Elimina productos de la plataforma.
 
         Args:
             payload (Any): Datos de identificación de los productos a eliminar.
 
         Returns:
-            dict: Respuesta del servidor a la operación de eliminación.
+            FalabellaResponse: Response whose ``request_id`` is the feed id.
         """
         params = {
             "Action": "ProductRemove"
         }
 
-        return self.client.query('post', params=params, payload=payload)
+        return unwrap(self.client.query('post', params=params, payload=payload))
 
-    def brands(self) -> Dict[str, Any]:
+    def brands(self) -> FalabellaResponse:
         """Busca las marcas de vendedor disponibles.
 
         Returns:
-            dict: Marcas asociadas al vendedor.
+            FalabellaResponse: Brands in ``items`` (inner ``Brand`` dicts).
         """
         params = {
             "Action": "GetBrands"
         }
 
-        return self.client.query('get', params=params)
+        return unwrap_collection(
+            self.client.query('get', params=params), "Brands", item_key="Brand"
+        )
 
-    def get_category_tree(self) -> Dict[str, Any]:
+    def get_category_tree(self) -> FalabellaResponse:
         """Obtiene la jerarquía completa de categorías de la plataforma.
 
         Returns:
-            dict: Árbol de categorías devuelto por la API.
+            FalabellaResponse: Top-level categories in ``items``.
         """
         params = {
             "Action": "GetCategoryTree"
         }
 
-        return self.client.query('get', params=params)
+        return unwrap_collection(
+            self.client.query('get', params=params), "Categories", "Category"
+        )
 
-    def get_category_attributes(self, primary_category_id: int) -> Dict[str, Any]:
+    def get_category_attributes(self, primary_category_id: int) -> FalabellaResponse:
         """Obtiene los atributos requeridos y opcionales asociados a una categoría específica.
 
         Args:
             primary_category_id (int): Identificador de la categoría principal.
 
         Returns:
-            dict: Lista de atributos y sus tipos.
+            FalabellaResponse: Category attributes in ``items``.
         """
         params = {
             "Action": "GetCategoryAttributes",
             "PrimaryCategory": primary_category_id
         }
 
-        return self.client.query('get', params=params)
+        return unwrap_collection(self.client.query('get', params=params), "Attribute")

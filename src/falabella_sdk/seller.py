@@ -1,6 +1,7 @@
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING
 
 from falabella_sdk.actions import Actions
+from falabella_sdk.responses import FalabellaResponse, unwrap
 
 if TYPE_CHECKING:
     from falabella_sdk.client import FalabellaClient
@@ -17,14 +18,14 @@ class Seller(Actions):
         """
         super().__init__(client)
 
-    def get(self) -> Dict[str, Any]:
+    def get(self) -> FalabellaResponse:
         """Obtiene la información y estado de la cuenta del vendedor.
 
         Returns:
-            dict: Datos del perfil del vendedor.
+            FalabellaResponse: Seller profile in ``body``.
         """
         params = {
             "Action": "GetSellerByUser"
         }
 
-        return self.client.query('get', params=params)
+        return unwrap(self.client.query('get', params=params))

@@ -1,7 +1,7 @@
 """Helpers to unwrap Falabella Seller Center response envelopes."""
 
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from dataclasses import dataclass, field, replace
+from typing import Any, Dict, List, Optional
 
 
 def _as_dict(value: Any) -> Dict[str, Any]:
@@ -34,6 +34,7 @@ class FalabellaResponse:
     head: Dict[str, Any]
     body: Any
     raw: Any
+    items: List[Any] = field(default_factory=list)
 
     @property
     def request_id(self) -> Optional[str]:
@@ -126,3 +127,26 @@ def get_list(container: Any, *path: str) -> list:
             return []
         current = current.get(key)
     return as_list(current)
+
+
+def unwrap_collection(raw: Any, *path: str,
+                      item_key: Optional[str] = None) -> FalabellaResponse:
+    """Unwrap a response whose body contains a collection.
+
+    Args:
+        raw: Parsed JSON returned by ``FalabellaClient.query``.
+        *path: Keys that lead to the collection inside the unwrapped body.
+        item_key: When given, elements that are dicts containing this key are
+            replaced by ``element[item_key]``; other elements are left unchanged.
+
+    Returns:
+        FalabellaResponse: ``unwrap(raw)`` with ``items`` filled from ``get_list``.
+    """
+    response = unwrap(raw)
+    items = get_list(response.body, *path)
+    if item_key is not None:
+        items = [
+            element[item_key] if isinstance(element, dict) and item_key in element else element
+            for element in items
+        ]
+    return replace(response, items=items)

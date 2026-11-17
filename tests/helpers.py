@@ -7,9 +7,9 @@ BASE_URL = re.compile(r"https://sellercenter-api\.falabella\.com")
 RESPONSE = {"SuccessResponse": {"Head": {"RequestId": "req-1"}, "Body": {}}}
 
 
-def add(method):
+def add(method, body=RESPONSE):
     """Register the mocked Falabella endpoint for one call."""
-    responses.add(method, BASE_URL, json=RESPONSE, status=200)
+    responses.add(method, BASE_URL, json=body, status=200)
 
 
 def sent_params(call):

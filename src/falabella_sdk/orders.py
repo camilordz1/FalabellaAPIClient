@@ -1,7 +1,8 @@
 import json
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Union
 
 from falabella_sdk.actions import Actions
+from falabella_sdk.responses import FalabellaResponse, unwrap, unwrap_collection
 
 if TYPE_CHECKING:
     from falabella_sdk.client import FalabellaClient
@@ -18,11 +19,11 @@ class Orders(Actions):
         """
         super().__init__(client)
 
-    def list(self, **kwargs: Any) -> Dict[str, Any]:
+    def list(self, **kwargs: Any) -> FalabellaResponse:
         """Busca una lista de órdenes.
 
         Returns:
-            dict: Lista de órdenes devuelta por el servidor.
+            FalabellaResponse: Orders in ``items``.
         """
         params = {
             "Action": "GetOrders"
@@ -31,16 +32,18 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        return self.client.query('get', params=params)
+        return unwrap_collection(
+            self.client.query('get', params=params), "Orders", "Order"
+        )
 
-    def get(self, order_id: Union[int, str], **kwargs: Any) -> Dict[str, Any]:
+    def get(self, order_id: Union[int, str], **kwargs: Any) -> FalabellaResponse:
         """Busca la información detallada de una orden.
 
         Args:
             order_id (int o str): ID de la orden.
 
         Returns:
-            dict: Información de la orden.
+            FalabellaResponse: Orders in ``items``.
         """
         params = {
             "Action": "GetOrder",
@@ -50,9 +53,11 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        return self.client.query('get', params=params)
+        return unwrap_collection(
+            self.client.query('get', params=params), "Orders", "Order"
+        )
 
-    def items(self, order_id: Union[int, str], template: str = "JSON") -> Dict[str, Any]:
+    def items(self, order_id: Union[int, str], template: str = "JSON") -> FalabellaResponse:
         """Busca los ítems individuales de una orden.
 
         Args:
@@ -60,7 +65,7 @@ class Orders(Actions):
             template (str, optional): Formato de salida. Por defecto es "JSON".
 
         Returns:
-            dict: Ítems de la orden.
+            FalabellaResponse: Order items in ``items``.
         """
         params = {
             "Action": "GetOrderItems",
@@ -68,10 +73,12 @@ class Orders(Actions):
             "Format": template
         }
 
-        return self.client.query('get', params=params)
+        return unwrap_collection(
+            self.client.query('get', params=params), "OrderItems", "OrderItem"
+        )
 
     def multiple_order_items(self, order_id_list: Union[List[Union[int, str]], str],
-                             template: str = "JSON") -> Dict[str, Any]:
+                             template: str = "JSON") -> FalabellaResponse:
         """Busca los ítems de una lista de órdenes.
 
         Args:
@@ -79,7 +86,7 @@ class Orders(Actions):
             template (str, optional): Formato de salida. Por defecto es "JSON".
 
         Returns:
-            dict: Ítems de las órdenes consultadas.
+            FalabellaResponse: Orders in ``items``.
         """
         if isinstance(order_id_list, (list, tuple)):
             order_id_list = json.dumps(order_id_list)
@@ -90,11 +97,13 @@ class Orders(Actions):
             "OrderIdList": order_id_list
         }
 
-        return self.client.query('get', params=params)
+        return unwrap_collection(
+            self.client.query('get', params=params), "Orders", "Order"
+        )
 
     def set_status_to_packed_by_marketplace(self, order_item_ids: Union[List[Union[int, str]], str],
                                             shipping_provider: str, delivery_type: str,
-                                            **kwargs: Any) -> Dict[str, Any]:
+                                            **kwargs: Any) -> FalabellaResponse:
         """Marca los ítems de la orden como empacados (PackedByMarketplace).
 
         Args:
@@ -115,12 +124,12 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        return self.client.query('post', params=params)
+        return unwrap(self.client.query('post', params=params))
 
     def set_status_to_ready_to_ship(self, order_item_ids: Union[List[Union[int, str]], str],
                                     shipping_provider: str, tracking_number: str,
                                     delivery_type: str,
-                                    **kwargs: Any) -> Dict[str, Any]:
+                                    **kwargs: Any) -> FalabellaResponse:
         """Marca los ítems de la orden como listos para despachar (ReadyToShip).
 
         Args:
@@ -143,10 +152,10 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        return self.client.query('post', params=params)
+        return unwrap(self.client.query('post', params=params))
 
     def set_status_to_shipped(self, order_item_ids: Union[List[Union[int, str]], str],
-                              tracking_number: str, **kwargs: Any) -> Dict[str, Any]:
+                              tracking_number: str, **kwargs: Any) -> FalabellaResponse:
         """Marca los ítems de la orden como enviados (Shipped).
 
         Args:
@@ -165,10 +174,10 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        return self.client.query('post', params=params)
+        return unwrap(self.client.query('post', params=params))
 
     def set_status_to_delivered(self, order_item_ids: Union[List[Union[int, str]], str],
-                                 **kwargs: Any) -> Dict[str, Any]:
+                                 **kwargs: Any) -> FalabellaResponse:
         """Marca los ítems de la orden como entregados (Delivered).
 
         Args:
@@ -185,11 +194,11 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        return self.client.query('post', params=params)
+        return unwrap(self.client.query('post', params=params))
 
     def set_status_to_failed(self, order_item_ids: Union[List[Union[int, str]], str],
                              reason: str, reason_detail: Optional[str] = None,
-                             **kwargs: Any) -> Dict[str, Any]:
+                             **kwargs: Any) -> FalabellaResponse:
         """Marca los ítems de la orden como fallidos (Failed).
 
         Args:
@@ -211,11 +220,11 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        return self.client.query('post', params=params)
+        return unwrap(self.client.query('post', params=params))
 
     def set_status_to_cancelled(self, order_item_ids: Union[List[Union[int, str]], str],
                                 reason: str, reason_detail: Optional[str] = None,
-                                **kwargs: Any) -> Dict[str, Any]:
+                                **kwargs: Any) -> FalabellaResponse:
         """Marca los ítems de la orden como cancelados (Cancelled).
 
         Args:
@@ -237,4 +246,4 @@ class Orders(Actions):
         if kwargs:
             params.update(kwargs)
 
-        return self.client.query('post', params=params)
+        return unwrap(self.client.query('post', params=params))

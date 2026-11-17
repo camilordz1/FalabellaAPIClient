@@ -1,5 +1,6 @@
 import responses
 
+from falabella_sdk import FalabellaResponse
 from tests.helpers import RESPONSE, add, params, sent_params
 
 
@@ -7,7 +8,10 @@ from tests.helpers import RESPONSE, add, params, sent_params
 def test_get_sends_get(client):
     add(responses.GET)
 
-    assert client.seller.get() == RESPONSE
+    result = client.seller.get()
+
+    assert isinstance(result, FalabellaResponse)
+    assert result.raw == RESPONSE
 
     call = responses.calls[0]
     assert call.request.method == "GET"
