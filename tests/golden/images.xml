@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Request><ProductImage><SellerSku>TP-10490</SellerSku><Images><Image>https://cdn.example.com/1.jpg</Image><Image>https://cdn.example.com/2.jpg</Image></Images></ProductImage><ProductImage><SellerSku>TP-13027</SellerSku><Images><Image>https://cdn.example.com/a.jpg?w=100&amp;h=200</Image></Images></ProductImage></Request>

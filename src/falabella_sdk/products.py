@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from datetime import date, datetime, timedelta, timezone, tzinfo
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence, Union
@@ -7,7 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from falabella_sdk.actions import Actions
 from falabella_sdk.client import FalabellaAPIError, FalabellaFeedError
 from falabella_sdk.feeds import validate_wait_options
-from falabella_sdk.payloads import PriceStockUpdate, Product, to_xml
+from falabella_sdk.payloads import PriceStockUpdate, Product, images_to_xml, to_xml
 from falabella_sdk.responses import FalabellaResponse, unwrap, unwrap_collection
 
 if TYPE_CHECKING:
@@ -342,6 +343,86 @@ class Products(Actions):
         return self.update(
             payloads, wait=wait, timeout=timeout, poll_interval=poll_interval
         )
+
+    def upload_images(self, images: Mapping[str, Sequence[str]], *, wait: bool = False,
+                      timeout: float = 300.0,
+                      poll_interval: float = 5.0) -> Union[FalabellaResponse, "FeedStatus"]:
+        """Upload images for up to 50 SKUs (at most 8 public ``https://`` URLs each).
+
+        Images must be uploaded after the ``ProductCreate`` feed finished, otherwise
+        Falabella reports "Images Missing"; this method does not add implicit waits.
+
+        Args:
+            images: Mapping of ``SellerSku`` to 1–8 ``https://`` URLs.
+            wait: Wait for the feed when True. Defaults to False.
+            timeout: Maximum seconds to wait. Defaults to 300.0.
+            poll_interval: Seconds between polls. Defaults to 5.0.
+
+        Returns:
+            FalabellaResponse: Write response when ``wait=False``.
+            FeedStatus: Finished feed when ``wait=True``.
+
+        Raises:
+            ValueError: If the mapping or wait options are invalid (no request is sent).
+        """
+        if wait:
+            validate_wait_options(timeout, poll_interval)
+        if not isinstance(images, Mapping):
+            raise ValueError("images must be a mapping of SellerSku to URLs")
+        if len(images) > 50:
+            raise ValueError("images may contain at most 50 SKUs per call")
+
+        payload = images_to_xml(images)
+        response = unwrap(
+            self.client.query('post', params={"Action": "Image"}, payload=payload)
+        )
+        if wait:
+            return self._wait_for_feed(response, "Image", timeout, poll_interval)
+        return response
+
+    def get_qc_status(self, skus: Any = None, *, limit: int = 100,
+                      offset: int = 0) -> FalabellaResponse:
+        """Get the quality-control status for SKUs or a page of results.
+
+        Args:
+            skus: Optional list of up to 100 SellerSku values. When omitted,
+                ``limit`` and ``offset`` are used instead.
+            limit: Page size between 1 and 100. Defaults to 100.
+            offset: Page offset. Defaults to 0.
+
+        Returns:
+            FalabellaResponse: QC states in ``items`` with the API key names
+            (``SellerSKU``, ``Status``, ``Reason``).
+
+        Raises:
+            ValueError: If the SKU list or pagination is invalid (no request is sent).
+        """
+        if skus is not None:
+            if not isinstance(skus, (list, tuple)):
+                raise ValueError("skus must be a list of SellerSku values")
+            if not 1 <= len(skus) <= 100:
+                raise ValueError("skus must contain between 1 and 100 values")
+            seen = set()
+            for seller_sku in skus:
+                if not isinstance(seller_sku, str) or not seller_sku.strip():
+                    raise ValueError("each SellerSku must be a non-empty string")
+                if seller_sku in seen:
+                    raise ValueError(f"duplicate SellerSku: {seller_sku}")
+                seen.add(seller_sku)
+            params = {
+                "Action": "GetQcStatus",
+                "SkuSellerList": json.dumps(list(skus)),
+            }
+        else:
+            if (not isinstance(limit, int) or isinstance(limit, bool)
+                    or not 1 <= limit <= 100):
+                raise ValueError("limit must be an integer between 1 and 100")
+            if not isinstance(offset, int) or isinstance(offset, bool) or offset < 0:
+                raise ValueError("offset must be an integer greater than or equal to 0")
+            params = {"Action": "GetQcStatus", "Limit": limit, "Offset": offset}
+
+        raw = self.client.query('get', params=params)
+        return unwrap_collection(raw, "Status", item_key="State")
 
     def brands(self) -> FalabellaResponse:
         """Busca las marcas de vendedor disponibles.

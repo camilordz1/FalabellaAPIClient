@@ -1,6 +1,7 @@
 """Typed payloads for product writes and their XML serializer."""
 
 import re
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any, Dict, List, TypedDict, Union
 from xml.sax.saxutils import escape
@@ -149,4 +150,48 @@ def to_xml(products: Union[Product, List[Product]]) -> bytes:
             raise ValueError("each product requires a non-empty SellerSku")
 
     body = "".join(_element("Product", product) for product in items)
+    return f"{_HEADER}<Request>{body}</Request>".encode("utf-8")
+
+
+def images_to_xml(images: Mapping[str, Sequence[str]]) -> bytes:
+    """Serialize per-SKU image URLs to the ``Image`` action XML.
+
+    Args:
+        images: Mapping of ``SellerSku`` to 1–8 public ``https://`` URLs.
+
+    Returns:
+        bytes: UTF-8 XML with one ``<ProductImage>`` per SKU.
+
+    Raises:
+        ValueError: If the mapping is empty, a SKU is blank, a SKU has 0 or more
+            than 8 URLs, a URL is not a ``https://`` string, a URL is duplicated
+            for the same SKU, or text contains characters not allowed in XML.
+    """
+    if not isinstance(images, Mapping) or not images:
+        raise ValueError("images must be a non-empty mapping of SellerSku to URLs")
+
+    validated = []
+    for seller_sku, urls in images.items():
+        if not isinstance(seller_sku, str) or not seller_sku.strip():
+            raise ValueError("each SellerSku must be a non-empty string")
+        if _XML_INVALID_CHARS.search(seller_sku):
+            raise ValueError(f"SellerSku {seller_sku!r} has characters not allowed in XML")
+        if not isinstance(urls, (list, tuple)) or not 1 <= len(urls) <= 8:
+            raise ValueError(f"{seller_sku} must have between 1 and 8 image URLs")
+
+        seen = set()
+        for url in urls:
+            if not isinstance(url, str) or not url.startswith("https://"):
+                raise ValueError(f"image URL for {seller_sku} must be a https:// string")
+            if _XML_INVALID_CHARS.search(url):
+                raise ValueError(f"image URL for {seller_sku} has characters not allowed in XML")
+            if url in seen:
+                raise ValueError(f"duplicate image URL for {seller_sku}: {url}")
+            seen.add(url)
+        validated.append((seller_sku, list(urls)))
+
+    body = "".join(
+        _element("ProductImage", {"SellerSku": seller_sku, "Images": {"Image": urls}})
+        for seller_sku, urls in validated
+    )
     return f"{_HEADER}<Request>{body}</Request>".encode("utf-8")
