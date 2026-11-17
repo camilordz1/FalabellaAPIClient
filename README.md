@@ -88,6 +88,30 @@ Falabella exige enviar un encabezado `User-Agent` con el formato
 
 ---
 
+## Feeds
+
+Las operaciones de escritura (`products.create`, `products.update`, `products.remove`, etc.) son
+asíncronas: la respuesta trae un id de feed en `request_id` y Falabella procesa el feed después.
+Usa `client.feeds.status(...)` para consultar cómo terminó:
+
+```python
+r = client.products.update(xml)
+estado = client.feeds.status(r.request_id)
+print(estado.status)          # "Finished", "Processing", ...
+print(estado.failed_records)  # conteo convertido a número
+
+for error in estado.errors:
+    print(error.seller_sku, error.message)
+
+recientes = client.feeds.list()
+print(recientes.items)
+```
+
+`FeedStatus` expone `is_done` (el feed ya terminó) y `has_errors` (tuvo fallas), además de
+`errors` y `warnings` con `seller_sku`, `code` y `message` por registro.
+
+---
+
 ## Tiempos de espera y reintentos
 
 `FalabellaClient` acepta las siguientes opciones de transporte como argumentos de solo palabra clave:
@@ -151,6 +175,10 @@ El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades
 ### 4. `client.shipments` (Envíos y Documentación)
 *   `get_providers()`: Obtiene el listado de transportistas disponibles (`GetShipmentProviders`).
 *   `get_document(order_item_ids, document_type="shippingLabel")`: Descarga documentos en HTML/PDF como guías de despacho (`shippingLabel`), facturas (`invoice`) o manifiestos (`carrierManifest`).
+
+### 5. `client.feeds` (Feeds asíncronos)
+*   `list()`: Obtiene los feeds recientes (`FeedList`).
+*   `status(feed_id)`: Obtiene el estado tipado de un feed (`FeedStatus`), con conteos, errores y advertencias.
 
 ---
 
