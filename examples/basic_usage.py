@@ -14,7 +14,7 @@ import json
 import os
 import sys
 
-from FalabellaAPIClient import FalabellaAPIError, FalabellaClient
+from falabella_sdk import FalabellaAPIError, FalabellaClient
 
 REQUIRED_VARIABLES = ("FALABELLA_USER", "FALABELLA_API_KEY", "FALABELLA_SELLER_ID")
 

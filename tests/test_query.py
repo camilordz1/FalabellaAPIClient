@@ -4,7 +4,7 @@ import pytest
 import requests
 import responses
 
-from FalabellaAPIClient import FalabellaAPIError
+from falabella_sdk import FalabellaAPIError
 
 BASE_URL = re.compile(r"https://sellercenter-api\.falabella\.com")
 

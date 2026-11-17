@@ -1,23 +1,16 @@
-# FalabellaAPIClient
+# falabella-sdk
 
-Este módulo permite interactuar de manera sencilla y eficiente con la API de Falabella Seller Center para administrar productos, categorías, órdenes, despachos y datos del vendedor.
+**Unofficial** Python SDK for the Falabella Seller Center API. This project is not affiliated with
+or endorsed by Falabella.
 
-El cliente ha sido rediseñado utilizando una **arquitectura basada en composición y propiedades perezosas (lazy properties)** para ofrecer una interfaz unificada y moderna. La versión anterior y el soporte de Linio se eliminaron; consulta la sección **Breaking changes** para migrar.
+Este módulo permite interactuar de manera sencilla y eficiente con la API de Falabella Seller Center para administrar productos, categorías, órdenes, despachos y datos del vendedor. El cliente utiliza una arquitectura basada en composición y propiedades perezosas (lazy properties) para ofrecer una interfaz unificada y moderna. La versión anterior y el soporte de Linio se eliminaron; consulta la sección **Breaking changes** para migrar.
 
 ---
 
 ## Instalación
 
-Para instalar el módulo localmente o desde tu entorno de desarrollo, ejecuta:
-
 ```bash
-pip install FalabellaAPIClient
-```
-
-O agrégalo a tu archivo `requirements.txt`:
-
-```text
-FalabellaAPIClient
+pip install falabella-sdk
 ```
 
 ---
@@ -28,7 +21,7 @@ La nueva arquitectura utiliza un único cliente (`FalabellaClient`) que gestiona
 
 ```python
 import json
-from FalabellaAPIClient import FalabellaClient, FalabellaAPIError
+from falabella_sdk import FalabellaClient, FalabellaAPIError
 
 # Inicializar el cliente unificado
 client = FalabellaClient(
@@ -136,6 +129,16 @@ El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades
 
 ## Breaking changes
 
+- The package was renamed from `FalabellaAPIClient` to `falabella-sdk` (import `falabella_sdk`).
+
+  ```python
+  # Before
+  from FalabellaAPIClient import FalabellaClient
+
+  # After
+  from falabella_sdk import FalabellaClient
+  ```
+
 - Linio support was removed; the client always targets `https://sellercenter-api.falabella.com`.
 - The `service` and `country` constructor parameters were removed.
 - The legacy `Session` and `Service` classes were removed. Use `FalabellaClient` and its resource
@@ -148,7 +151,7 @@ service = Service()
 items = Products(service, session)
 
 # After
-from FalabellaAPIClient import FalabellaClient
+from falabella_sdk import FalabellaClient
 
 client = FalabellaClient(user=user, key=key, seller_id="ABC123")
 items = client.products
@@ -160,18 +163,10 @@ See `examples/basic_usage.py` for a complete script driven by environment variab
 
 ## Development
 
-Set up a virtual environment and install the runtime package together with the dev
-dependencies:
-
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements-dev.txt -e .
-```
-
-Run the test suite:
-
-```bash
+pip install -e ".[dev]"
 pytest
 ```
 

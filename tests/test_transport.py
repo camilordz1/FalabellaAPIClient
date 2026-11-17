@@ -5,7 +5,7 @@ import pytest
 import requests
 import responses
 
-from FalabellaAPIClient import FalabellaAPIError, FalabellaClient
+from falabella_sdk import FalabellaAPIError, FalabellaClient
 
 URL = re.compile(r"https://sellercenter-api\.falabella\.com")
 OK = {"SuccessResponse": {"Head": {"RequestId": "req-1"}, "Body": {}}}

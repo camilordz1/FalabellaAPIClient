@@ -162,7 +162,7 @@ class FalabellaClient:
     def products(self) -> 'Products':
         """Acceso a operaciones del recurso Productos."""
         if not hasattr(self, '_products'):
-            from FalabellaAPIClient.products import Products
+            from falabella_sdk.products import Products
             self._products = Products(self)
         return self._products
 
@@ -170,7 +170,7 @@ class FalabellaClient:
     def orders(self) -> 'Orders':
         """Acceso a operaciones del recurso Órdenes."""
         if not hasattr(self, '_orders'):
-            from FalabellaAPIClient.orders import Orders
+            from falabella_sdk.orders import Orders
             self._orders = Orders(self)
         return self._orders
 
@@ -178,7 +178,7 @@ class FalabellaClient:
     def seller(self) -> 'Seller':
         """Acceso a operaciones del recurso Vendedor."""
         if not hasattr(self, '_seller'):
-            from FalabellaAPIClient.seller import Seller
+            from falabella_sdk.seller import Seller
             self._seller = Seller(self)
         return self._seller
 
@@ -186,7 +186,7 @@ class FalabellaClient:
     def shipments(self) -> 'Shipments':
         """Acceso a operaciones del recurso Envíos."""
         if not hasattr(self, '_shipments'):
-            from FalabellaAPIClient.shipments import Shipments
+            from falabella_sdk.shipments import Shipments
             self._shipments = Shipments(self)
         return self._shipments
 

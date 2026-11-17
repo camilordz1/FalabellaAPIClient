@@ -1,3 +1,0 @@
-pytest>=8.0
-responses>=0.25
-freezegun>=1.4
