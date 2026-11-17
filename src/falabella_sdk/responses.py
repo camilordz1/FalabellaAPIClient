@@ -64,6 +64,8 @@ def unwrap(raw: Any) -> FalabellaResponse:
 
     Returns:
         FalabellaResponse: Extracted ``head``/``body`` plus the untouched ``raw`` input.
+        A ``Body`` of ``None``, ``""`` or missing becomes ``{}``; any other value
+        (dict, list, string) is kept as is.
 
     Raises:
         ValueError: If ``raw`` is an ``ErrorResponse``. Those are raised as
@@ -78,9 +80,49 @@ def unwrap(raw: Any) -> FalabellaResponse:
             raise ValueError("ErrorResponse envelopes must be handled by FalabellaClient.query")
         success = raw.get("SuccessResponse")
         if isinstance(success, dict):
+            body = success.get("Body")
+            if body is None or body == "":
+                body = {}
             return FalabellaResponse(
                 head=_as_dict(success.get("Head")),
-                body=_as_dict(success.get("Body")),
+                body=body,
                 raw=raw,
             )
     return FalabellaResponse(head={}, body=raw, raw=raw)
+
+
+def as_list(value: Any) -> list:
+    """Return ``value`` as a list without copying dicts or lists.
+
+    ``None`` and ``""`` mean "no items" and return ``[]``. A dict is wrapped in a
+    single-element list; a list is returned as is; any other value is wrapped.
+    """
+    if value is None or value == "":
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def get_list(container: Any, *path: str) -> list:
+    """Read a collection at ``path`` and return it as a list.
+
+    Args:
+        container: Parsed response body (usually ``FalabellaResponse.body``).
+        *path: Keys to walk through nested dicts. At least one is required.
+
+    Returns:
+        list: ``as_list`` of the value at ``path``, or ``[]`` when a step is missing
+        or an intermediate value is not a dict.
+
+    Raises:
+        TypeError: If no path is provided.
+    """
+    if not path:
+        raise TypeError("get_list requires at least one key")
+    current = container
+    for key in path:
+        if not isinstance(current, dict):
+            return []
+        current = current.get(key)
+    return as_list(current)
