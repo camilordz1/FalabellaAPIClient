@@ -5,7 +5,13 @@ from falabella_sdk.client import (
 )
 from falabella_sdk.feeds import FalabellaFeedTimeout, FeedError, Feeds, FeedStatus
 from falabella_sdk.orders import Orders
-from falabella_sdk.payloads import BusinessUnit, BusinessUnits, Product, to_xml
+from falabella_sdk.payloads import (
+    BusinessUnit,
+    BusinessUnits,
+    PriceStockUpdate,
+    Product,
+    to_xml,
+)
 from falabella_sdk.products import Products
 from falabella_sdk.responses import FalabellaResponse
 from falabella_sdk.seller import Seller
@@ -25,6 +31,7 @@ __all__ = [
     "Product",
     "BusinessUnit",
     "BusinessUnits",
+    "PriceStockUpdate",
     "to_xml",
     "Products",
     "Orders",

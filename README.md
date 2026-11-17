@@ -208,6 +208,31 @@ client.products.update(
 Envía los precios como `Decimal` o `str` para conservar los decimales exactos. Un valor `None`
 omite el campo y `""` lo envía vacío (por ejemplo, para limpiar `SpecialPrice`).
 
+#### Actualizar precio y stock sin perder la oferta
+
+`update_price_and_stock(items, wait=...)` lee el estado actual de los SKU con un solo
+`GetProducts`, arma un único `ProductUpdate` y conserva la oferta vigente (`SpecialPrice` y sus
+fechas) cuando solo cambias stock u otros campos. Acepta hasta 50 SKU por llamada.
+
+```python
+from decimal import Decimal
+
+client.products.update_price_and_stock(
+    [
+        {"SellerSku": "TP-10490", "Stock": 12},           # conserva la oferta vigente
+        {"SellerSku": "TP-13027", "Price": Decimal("89900.00")},
+        {"SellerSku": "TP-18545", "SpecialPrice": ""},    # quita la oferta
+    ],
+    wait=True,
+)
+```
+
+El `OperatorCode` sale del `business_unit` del cliente (por ejemplo, `FACO` -> `faco`).
+La validación ocurre antes de escribir: SKUs duplicados o inexistentes, más de 50 elementos u
+opciones de espera inválidas fallan sin enviar el update. Entre la lectura y la escritura hay una
+carrera: si la oferta cambia en Seller Center en ese instante, este update puede pisarla (la API
+no ofrece escrituras condicionales).
+
 ### 2. `client.orders` (Órdenes de Venta)
 *   `list(**kwargs)`: Obtiene la lista de órdenes (`GetOrders`).
 *   `get(order_id, **kwargs)`: Obtiene detalles de una orden específica.

@@ -24,6 +24,19 @@ class _ProductRequired(TypedDict):
     SellerSku: str
 
 
+class _PriceStockUpdateRequired(TypedDict):
+    SellerSku: str
+
+
+class PriceStockUpdate(_PriceStockUpdateRequired, total=False):
+    Price: Union[str, int, float, Decimal]
+    Stock: Union[str, int, float, Decimal]
+    SpecialPrice: Union[str, int, float, Decimal]
+    SpecialFromDate: Union[str, int, float, Decimal]
+    SpecialToDate: Union[str, int, float, Decimal]
+    Status: Union[str, int, float, Decimal]
+
+
 class Product(_ProductRequired, total=False):
     ParentSku: str
     Name: str
@@ -43,6 +56,7 @@ _HEADER = '<?xml version="1.0" encoding="UTF-8" ?>\n'
 _XML_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*$")
 # XML 1.0 forbids C0 controls except tab, newline and carriage return, and U+FFFE/U+FFFF.
 _XML_INVALID_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
+_MAX_ABS_NUMBER = 10**15
 
 
 def _validate_name(name: str) -> None:
@@ -57,10 +71,19 @@ def _scalar_text(value: Any, key: str) -> str:
         number = Decimal(repr(value)) if isinstance(value, float) else value
         if not number.is_finite():
             raise ValueError(f"Value for key {key!r} must be a finite number")
+        if abs(number) >= _MAX_ABS_NUMBER:
+            raise ValueError(f"Value for key {key!r} must be below 10**15")
         # Fixed-point text: Decimal("1E+3") -> "1000", 1e20 -> "100000000000000000000".
         return format(number, "f")
-    if isinstance(value, (str, int)):
+    if isinstance(value, int):
+        if abs(value) >= _MAX_ABS_NUMBER:
+            raise ValueError(f"Value for key {key!r} must be below 10**15")
         text = str(value)
+        if _XML_INVALID_CHARS.search(text):
+            raise ValueError(f"Value for key {key!r} has characters not allowed in XML")
+        return text
+    if isinstance(value, str):
+        text = value
         if _XML_INVALID_CHARS.search(text):
             raise ValueError(f"Value for key {key!r} has characters not allowed in XML")
         return text
