@@ -11,6 +11,7 @@ def test_public_api():
     expected = {
         "FalabellaClient",
         "FalabellaAPIError",
+        "FalabellaResponse",
         "Products",
         "Orders",
         "Seller",

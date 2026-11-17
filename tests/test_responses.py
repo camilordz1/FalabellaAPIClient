@@ -2,7 +2,13 @@ import copy
 
 import pytest
 
-from falabella_sdk.responses import FalabellaResponse, as_list, get_list, unwrap
+from falabella_sdk.responses import (
+    FalabellaResponse,
+    as_list,
+    get_list,
+    unwrap,
+    unwrap_collection,
+)
 
 PRODUCTS_RESPONSE = {
     "SuccessResponse": {
@@ -211,3 +217,43 @@ def test_input_is_not_mutated():
 
     assert PRODUCTS_RESPONSE == original
     assert response.raw is PRODUCTS_RESPONSE
+
+
+def test_unwrap_collection_wraps_single_dict():
+    raw = {"SuccessResponse": {"Body": {"Products": {"Product": {"SellerSku": "A"}}}}}
+
+    result = unwrap_collection(raw, "Products", "Product")
+
+    assert result.items == [{"SellerSku": "A"}]
+    assert result.body == {"Products": {"Product": {"SellerSku": "A"}}}
+
+
+def test_unwrap_collection_keeps_list():
+    items = [{"SellerSku": "A"}, {"SellerSku": "B"}]
+    raw = {"SuccessResponse": {"Body": {"Products": {"Product": items}}}}
+
+    result = unwrap_collection(raw, "Products", "Product")
+
+    assert result.items is items
+
+
+def test_unwrap_collection_returns_empty_list_for_empty_string():
+    raw = {"SuccessResponse": {"Body": {"Orders": ""}}}
+
+    assert unwrap_collection(raw, "Orders", "Order").items == []
+
+
+def test_unwrap_collection_returns_empty_list_for_non_dict_body():
+    assert unwrap_collection({"response_text": "x"}, "Orders", "Order").items == []
+
+
+def test_unwrap_collection_item_key_unwraps_elements_with_key():
+    raw = {
+        "SuccessResponse": {
+            "Body": {"Brands": [{"Brand": {"Id": 1}}, {"Other": 2}]}
+        }
+    }
+
+    result = unwrap_collection(raw, "Brands", item_key="Brand")
+
+    assert result.items == [{"Id": 1}, {"Other": 2}]

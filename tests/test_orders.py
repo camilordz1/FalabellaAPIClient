@@ -1,6 +1,7 @@
 import pytest
 import responses
 
+from falabella_sdk import FalabellaResponse
 from tests.helpers import RESPONSE, add, params, sent_params
 
 
@@ -8,7 +9,10 @@ from tests.helpers import RESPONSE, add, params, sent_params
 def test_list_sends_get_with_kwargs_filters(client):
     add(responses.GET)
 
-    assert client.orders.list(Limit=10, Country="CO") == RESPONSE
+    result = client.orders.list(Limit=10, Country="CO")
+
+    assert isinstance(result, FalabellaResponse)
+    assert result.raw == RESPONSE
 
     call = responses.calls[0]
     assert call.request.method == "GET"
@@ -19,7 +23,10 @@ def test_list_sends_get_with_kwargs_filters(client):
 def test_get_sends_order_id_and_kwargs(client):
     add(responses.GET)
 
-    assert client.orders.get(100513, Country="CO") == RESPONSE
+    result = client.orders.get(100513, Country="CO")
+
+    assert isinstance(result, FalabellaResponse)
+    assert result.raw == RESPONSE
 
     call = responses.calls[0]
     assert call.request.method == "GET"
@@ -68,9 +75,12 @@ def test_multiple_order_items_accepts_serialized_string(client):
 def test_set_status_to_packed_by_marketplace_sends_post(client):
     add(responses.POST)
 
-    assert client.orders.set_status_to_packed_by_marketplace(
+    result = client.orders.set_status_to_packed_by_marketplace(
         [1, 2], "Falabella", "dropship"
-    ) == RESPONSE
+    )
+
+    assert isinstance(result, FalabellaResponse)
+    assert result.raw == RESPONSE
 
     call = responses.calls[0]
     assert call.request.method == "POST"
@@ -150,3 +160,70 @@ def test_set_status_to_cancelled_optional_reason_detail(client, reason_detail, e
     query = sent_params(call)
     assert query.pop("ReasonDetail", None) == expected
     assert query == params("SetStatusToCancelled", OrderItemIds="[1, 2]", Reason="fraud")
+
+
+def body(collection, value):
+    return {"SuccessResponse": {"Head": {"RequestId": "req-1"}, "Body": {collection: value}}}
+
+
+@responses.activate
+def test_list_returns_single_order_as_items(client):
+    add(responses.GET, body("Orders", {"Order": {"OrderId": 1}}))
+
+    assert client.orders.list().items == [{"OrderId": 1}]
+
+
+@responses.activate
+def test_list_returns_multiple_orders_as_items(client):
+    add(responses.GET, body("Orders", {"Order": [{"OrderId": 1}, {"OrderId": 2}]}))
+
+    assert len(client.orders.list().items) == 2
+
+
+@responses.activate
+def test_list_returns_empty_items_when_orders_is_empty_string(client):
+    add(responses.GET, body("Orders", ""))
+
+    assert client.orders.list().items == []
+
+
+@responses.activate
+def test_get_returns_single_order_as_items(client):
+    add(responses.GET, body("Orders", {"Order": {"OrderId": 1}}))
+
+    assert client.orders.get(1).items == [{"OrderId": 1}]
+
+
+@responses.activate
+def test_get_returns_multiple_orders_as_items(client):
+    add(responses.GET, body("Orders", {"Order": [{"OrderId": 1}, {"OrderId": 2}]}))
+
+    assert len(client.orders.get(1).items) == 2
+
+
+@responses.activate
+def test_items_returns_single_item_as_items(client):
+    add(responses.GET, body("OrderItems", {"OrderItem": {"OrderItemId": 1}}))
+
+    assert client.orders.items(1).items == [{"OrderItemId": 1}]
+
+
+@responses.activate
+def test_items_returns_multiple_items_as_items(client):
+    add(responses.GET, body("OrderItems", {"OrderItem": [{"OrderItemId": 1}, {"OrderItemId": 2}]}))
+
+    assert len(client.orders.items(1).items) == 2
+
+
+@responses.activate
+def test_multiple_order_items_returns_single_order_as_items(client):
+    add(responses.GET, body("Orders", {"Order": {"OrderId": 1}}))
+
+    assert client.orders.multiple_order_items([1]).items == [{"OrderId": 1}]
+
+
+@responses.activate
+def test_multiple_order_items_returns_multiple_orders_as_items(client):
+    add(responses.GET, body("Orders", {"Order": [{"OrderId": 1}, {"OrderId": 2}]}))
+
+    assert len(client.orders.multiple_order_items([1, 2]).items) == 2
