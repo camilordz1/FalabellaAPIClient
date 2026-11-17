@@ -1,7 +1,7 @@
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from FalabellaAPIClient.client import FalabellaClient
+    from falabella_sdk.client import FalabellaClient
 
 
 class Actions:

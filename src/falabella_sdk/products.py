@@ -1,8 +1,8 @@
 from typing import Any, Dict, TYPE_CHECKING
-from FalabellaAPIClient.actions import Actions
+from falabella_sdk.actions import Actions
 
 if TYPE_CHECKING:
-    from FalabellaAPIClient.client import FalabellaClient
+    from falabella_sdk.client import FalabellaClient
 
 
 class Products(Actions):

@@ -1,6 +1,6 @@
 import pytest
 
-from FalabellaAPIClient import FalabellaClient
+from falabella_sdk import FalabellaClient
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 import pytest
 
-import FalabellaAPIClient
-from FalabellaAPIClient import FalabellaClient, Products
+import falabella_sdk
+from falabella_sdk import FalabellaClient, Products
 
 
 def test_base_url_is_falabella():
@@ -22,10 +22,10 @@ def test_positional_third_argument_is_rejected():
 
 
 def test_legacy_names_are_not_exported():
-    assert not hasattr(FalabellaAPIClient, "Session")
-    assert not hasattr(FalabellaAPIClient, "Service")
-    assert "Session" not in FalabellaAPIClient.__all__
-    assert "Service" not in FalabellaAPIClient.__all__
+    assert not hasattr(falabella_sdk, "Session")
+    assert not hasattr(falabella_sdk, "Service")
+    assert "Session" not in falabella_sdk.__all__
+    assert "Service" not in falabella_sdk.__all__
 
 
 def test_resource_requires_client():
