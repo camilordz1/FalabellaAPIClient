@@ -2,10 +2,9 @@
 
 [![CI](https://github.com/camilordz1/FalabellaAPIClient/actions/workflows/ci.yml/badge.svg)](https://github.com/camilordz1/FalabellaAPIClient/actions/workflows/ci.yml)
 
-**Unofficial** Python SDK for the Falabella Seller Center API. This project is not affiliated with
-or endorsed by Falabella.
+**SDK no oficial** de Python para la API de Falabella Seller Center. Este proyecto no está afiliado ni respaldado por Falabella.
 
-Este módulo permite interactuar de manera sencilla y eficiente con la API de Falabella Seller Center para administrar productos, categorías, órdenes, despachos y datos del vendedor. El cliente utiliza una arquitectura basada en composición y propiedades perezosas (lazy properties) para ofrecer una interfaz unificada y moderna. La versión anterior y el soporte de Linio se eliminaron; consulta la sección **Breaking changes** para migrar.
+Este módulo permite interactuar de manera sencilla y eficiente con la API de Falabella Seller Center para administrar productos, categorías, órdenes, despachos y datos del vendedor. El cliente utiliza una arquitectura basada en composición y propiedades perezosas (lazy properties) para ofrecer una interfaz unificada y moderna. La versión anterior y el soporte de Linio se eliminaron; consulta la sección **Cambios incompatibles** para migrar.
 
 ---
 
@@ -15,13 +14,13 @@ Este módulo permite interactuar de manera sencilla y eficiente con la API de Fa
 pip install falabella-sdk
 ```
 
-Requires Python 3.10+.
+Requiere Python 3.10+.
 
 ---
 
-## Uso Básico (Nueva Arquitectura)
+## Uso básico
 
-La nueva arquitectura utiliza un único cliente (`FalabellaClient`) que gestiona internamente la sesión HTTP y la generación de firmas `HMAC-SHA256`. Los recursos se cargan dinámicamente como propiedades del cliente.
+La arquitectura actual utiliza un único cliente (`FalabellaClient`) que gestiona internamente la sesión HTTP y la generación de firmas `HMAC-SHA256`. Los recursos se cargan dinámicamente como propiedades del cliente.
 
 ```python
 import json
@@ -31,9 +30,9 @@ from falabella_sdk import FalabellaClient, FalabellaAPIError
 client = FalabellaClient(
     user="email@example.com",
     key="_api_key_",
-    seller_id="ABC123",   # seller id shown in Seller Center under "Mi cuenta"
-    business_unit="FACO", # "FACL" (Chile), "FACO" (Colombia), "FAPE" (Peru)
-    integration_type="PROPIA",  # integrator name when you are not the seller
+    seller_id="ABC123",   # seller id que aparece en Seller Center en "Mi cuenta"
+    business_unit="FACO", # "FACL" (Chile), "FACO" (Colombia), "FAPE" (Perú)
+    integration_type="PROPIA",  # nombre del integrador si no eres el vendedor
 )
 
 # 1. Obtener información de un producto
@@ -56,47 +55,47 @@ except FalabellaAPIError as e:
     print(f"Error con las órdenes: {e}")
 ```
 
-Falabella requires a `User-Agent` header in the form
+Falabella exige enviar un encabezado `User-Agent` con el formato
 `SELLER_ID/TECHNOLOGY/TECHNOLOGY_VERSION/INTEGRATION_TYPE/BUSINESS_UNIT_CODE`
-(e.g. `ABC123/Python/3.12.1/PROPIA/FACO`). The client builds it from `seller_id`,
-`integration_type` and `business_unit`; the seller id is shown in Seller Center under
-"Mi cuenta". `seller_id` is optional for now: when missing, the client emits a `UserWarning`
-and sends no Falabella `User-Agent`. It will be mandatory in the next major version.
+(por ejemplo, `ABC123/Python/3.12.1/PROPIA/FACO`). El cliente lo construye a partir de `seller_id`,
+`integration_type` y `business_unit`; el seller id aparece en Seller Center en "Mi cuenta".
+`seller_id` es opcional por ahora: si falta, el cliente emite un `UserWarning` y no envía el
+`User-Agent` de Falabella. Será obligatorio en la próxima versión mayor.
 
 ---
 
-## Timeouts and retries
+## Tiempos de espera y reintentos
 
-`FalabellaClient` accepts keyword-only transport options:
+`FalabellaClient` acepta las siguientes opciones de transporte como argumentos de solo palabra clave:
 
 ```python
 client = FalabellaClient(
     user="email@example.com",
     key="_api_key_",
-    timeout=30.0,        # seconds per request
-    max_retries=3,       # retries after the first attempt
-    backoff_factor=1.0,  # exponential backoff base
+    timeout=30.0,        # segundos por petición
+    max_retries=3,       # reintentos después del primer intento
+    backoff_factor=1.0,  # base del backoff exponencial
 )
 ```
 
-Requests that were not processed are retried up to `1 + max_retries` attempts. Delays use a
-numeric `Retry-After` header when present, otherwise `backoff_factor * 2 ** (attempt - 1)`, and
-are capped at 60 seconds.
+Las peticiones que no fueron procesadas se reintentan hasta `1 + max_retries` veces. Los tiempos de
+espera usan el encabezado `Retry-After` cuando es numérico; de lo contrario, aplican
+`backoff_factor * 2 ** (attempt - 1)`, con un máximo de 60 segundos.
 
-| Condition | GET | POST (writes) |
+| Condición | GET | POST (escrituras) |
 |---|---|---|
-| HTTP 429 | retry | retry |
-| `ErrorResponse` with `ErrorCode` `429` | retry | retry |
-| HTTP 5xx | retry | no retry |
-| `ConnectionError` / `Timeout` | retry | no retry |
-| Any other error | no retry | no retry |
+| HTTP 429 | reintentar | reintentar |
+| `ErrorResponse` con `ErrorCode` `429` | reintentar | reintentar |
+| HTTP 5xx | reintentar | no reintentar |
+| `ConnectionError` / `Timeout` | reintentar | no reintentar |
+| Cualquier otro error | no reintentar | no reintentar |
 
-`payload` must be `None`, `str` or `bytes` (XML); other types raise `TypeError` before the request
-is sent.
+`payload` debe ser `None`, `str` o `bytes` (XML); otros tipos lanzan `TypeError` antes de enviar la
+petición.
 
 ---
 
-## Recursos Disponibles
+## Recursos disponibles
 
 El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades perezosas:
 
@@ -131,42 +130,42 @@ El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades
 
 ---
 
-## Breaking changes
+## Cambios incompatibles
 
-- Python 3.9 is no longer supported; the minimum version is Python 3.10.
-- The package was renamed from `FalabellaAPIClient` to `falabella-sdk` (import `falabella_sdk`).
+- Python 3.9 ya no es compatible; la versión mínima es Python 3.10.
+- El paquete se renombró de `FalabellaAPIClient` a `falabella-sdk` (importación `falabella_sdk`).
 
   ```python
-  # Before
+  # Antes
   from FalabellaAPIClient import FalabellaClient
 
-  # After
+  # Después
   from falabella_sdk import FalabellaClient
   ```
 
-- Linio support was removed; the client always targets `https://sellercenter-api.falabella.com`.
-- The `service` and `country` constructor parameters were removed.
-- The legacy `Session` and `Service` classes were removed. Use `FalabellaClient` and its resource
-  properties (`client.products`, `client.orders`, `client.seller`, `client.shipments`) instead.
+- Se eliminó el soporte de Linio; el cliente siempre apunta a `https://sellercenter-api.falabella.com`.
+- Se eliminaron los parámetros `service` y `country` del constructor.
+- Se eliminaron las clases heredadas `Session` y `Service`. Usa `FalabellaClient` y sus propiedades
+  de recursos (`client.products`, `client.orders`, `client.seller`, `client.shipments`) en su lugar.
 
 ```python
-# Before
+# Antes
 session = Session(user, key, "falabella")
 service = Service()
 items = Products(service, session)
 
-# After
+# Después
 from falabella_sdk import FalabellaClient
 
 client = FalabellaClient(user=user, key=key, seller_id="ABC123")
 items = client.products
 ```
 
-See `examples/basic_usage.py` for a complete script driven by environment variables.
+Consulta `examples/basic_usage.py` para ver un script completo controlado por variables de entorno.
 
 ---
 
-## Development
+## Desarrollo
 
 ```bash
 python -m venv .venv
