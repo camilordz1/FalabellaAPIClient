@@ -21,9 +21,9 @@ classifiers = [
 dependencies = ["falabella-sdk>=1.0.0a1"]
 
 [project.urls]
-Homepage = "https://github.com/camilordz1/FalabellaAPIClient"
-Source = "https://github.com/camilordz1/FalabellaAPIClient"
-Issues = "https://github.com/camilordz1/FalabellaAPIClient/issues"
+Homepage = "https://github.com/camilordz1/falabella-sdk"
+Source = "https://github.com/camilordz1/falabella-sdk"
+Issues = "https://github.com/camilordz1/falabella-sdk/issues"
 "New package" = "https://pypi.org/project/falabella-sdk/"
 
 [tool.setuptools.packages.find]
