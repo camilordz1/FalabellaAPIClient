@@ -3,7 +3,6 @@ import hmac
 import re
 from urllib.parse import quote, urlencode
 
-import pytest
 from freezegun import freeze_time
 
 FROZEN_TIME = "2026-01-15T10:30:00Z"

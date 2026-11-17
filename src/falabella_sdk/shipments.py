@@ -1,5 +1,6 @@
 import json
-from typing import Any, Dict, List, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Union
+
 from falabella_sdk.actions import Actions
 
 if TYPE_CHECKING:
@@ -31,7 +32,8 @@ class Shipments(Actions):
 
     def get_document(self, order_item_ids: Union[List[Union[int, str]], str],
                      document_type: str = "shippingLabel") -> Dict[str, Any]:
-        """Obtiene un documento de despacho (e.g., etiqueta de envío, manifiesto, factura) para ciertos ítems.
+        """Obtiene un documento de despacho (e.g., etiqueta de envío, manifiesto,
+        factura) para ciertos ítems.
 
         Args:
             order_item_ids (list o str): Lista de IDs de ítems de órdenes.
@@ -39,7 +41,8 @@ class Shipments(Actions):
                 Opciones comunes: "shippingLabel", "invoice", "carrierManifest".
 
         Returns:
-            dict: El documento codificado (a menudo en HTML/PDF dentro del campo 'Document' o en base64).
+            dict: El documento codificado (a menudo en HTML/PDF dentro del campo
+                'Document' o en base64).
         """
         if isinstance(order_item_ids, (list, tuple)):
             order_item_ids = json.dumps(order_item_ids)

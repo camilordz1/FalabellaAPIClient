@@ -2,12 +2,19 @@ import logging
 import platform
 import time
 import warnings
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+
 import requests
-from typing import Optional, Dict, Any, List, Tuple, Union
+
+if TYPE_CHECKING:
+    from falabella_sdk.orders import Orders
+    from falabella_sdk.products import Products
+    from falabella_sdk.seller import Seller
+    from falabella_sdk.shipments import Shipments
 from datetime import datetime, timezone
+from hashlib import sha256
 from hmac import HMAC
 from urllib import parse
-from hashlib import sha256
 
 logger = logging.getLogger("falabella")
 
@@ -105,12 +112,16 @@ class FalabellaClient:
         Args:
             user (str): Correo electrónico del usuario (UserID).
             key (str): Llave API (API Key).
-            timeout (float, optional): Timeout de cada petición HTTP en segundos. Por defecto es 30.0.
-            max_retries (int, optional): Reintentos máximos de peticiones transitorias. Por defecto es 3.
+            timeout (float, optional): Timeout de cada petición HTTP en segundos.
+                Por defecto es 30.0.
+            max_retries (int, optional): Reintentos máximos de peticiones transitorias.
+                Por defecto es 3.
             backoff_factor (float, optional): Base del backoff exponencial. Por defecto es 1.0.
             seller_id (str, optional): Seller id usado en el User-Agent requerido por Falabella.
-            business_unit (str, optional): Unidad de negocio ('FACL', 'FACO' o 'FAPE'). Por defecto 'FACO'.
-            integration_type (str, optional): Tipo de integración del User-Agent. Por defecto 'PROPIA'.
+            business_unit (str, optional): Unidad de negocio ('FACL', 'FACO' o 'FAPE').
+                Por defecto 'FACO'.
+            integration_type (str, optional): Tipo de integración del User-Agent.
+                Por defecto 'PROPIA'.
         """
         if not self._valid_timeout(timeout):
             raise ValueError(
@@ -250,8 +261,9 @@ class FalabellaClient:
             return None
 
     def _retry_delay(self, attempt: int, retry_after: Optional[float]) -> float:
-        delay = retry_after if retry_after is not None else self.backoff_factor * (2 ** (attempt - 1))
-        return max(0.0, min(delay, 60.0))
+        if retry_after is None:
+            retry_after = self.backoff_factor * (2 ** (attempt - 1))
+        return max(0.0, min(retry_after, 60.0))
 
     @staticmethod
     def _is_retryable(method: str, status_code: int, error_code: Optional[str]) -> bool:
