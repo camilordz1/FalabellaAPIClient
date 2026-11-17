@@ -110,6 +110,27 @@ print(recientes.items)
 `FeedStatus` expone `is_done` (el feed ya terminó) y `has_errors` (tuvo fallas), además de
 `errors` y `warnings` con `seller_sku`, `code` y `message` por registro.
 
+### Esperar el resultado
+
+`products.create`, `products.update` y `products.remove` aceptan `wait=True` para esperar el feed:
+
+```python
+from falabella_sdk import FalabellaFeedError
+
+try:
+    estado = client.products.update(xml, wait=True, timeout=120)
+    print("OK", estado.processed_records)
+except FalabellaFeedError as error:
+    for detalle in error.errors:
+        print(detalle.seller_sku, detalle.message)
+```
+
+`timeout` (300 s por defecto) es el tiempo máximo total y `poll_interval` (5 s) la espera entre
+consultas. Si se agota el tiempo se lanza `FalabellaFeedTimeout`, que conserva el último estado
+consultado. Un feed `Finished` puede tener registros fallidos: en ese caso `wait=True` lanza
+`FalabellaFeedError` con la lista de errores. Con `wait=False` (el valor por defecto) el método
+devuelve el `FalabellaResponse` de siempre.
+
 ---
 
 ## Tiempos de espera y reintentos

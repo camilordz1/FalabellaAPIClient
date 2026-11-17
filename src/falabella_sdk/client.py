@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 import requests
 
 if TYPE_CHECKING:
-    from falabella_sdk.feeds import Feeds
+    from falabella_sdk.feeds import FeedError, Feeds, FeedStatus
     from falabella_sdk.orders import Orders
     from falabella_sdk.products import Products
     from falabella_sdk.seller import Seller
@@ -33,6 +33,28 @@ class FalabellaAPIError(Exception):
         self.error_type = error_type
         self.action = action
         self.details = details if details is not None else []
+
+
+class FalabellaFeedError(FalabellaAPIError):
+    """Error raised when a feed ends with failures or a non-Finished status."""
+
+    def __init__(self, feed_status: "FeedStatus", *,
+                 message: Optional[str] = None) -> None:
+        errors: List[FeedError] = feed_status.errors
+        if message is None:
+            message = (
+                f"Feed {feed_status.feed_id} {feed_status.status}: "
+                f"{feed_status.failed_records}/{feed_status.total_records} records failed"
+            )
+            if errors:
+                message += " " + "; ".join(
+                    f"{error.seller_sku}: {error.message}" for error in errors[:3]
+                )
+            if len(errors) > 3:
+                message += f" (+{len(errors) - 3} more)"
+        super().__init__(message, action=feed_status.action)
+        self.feed_status = feed_status
+        self.errors = errors
 
 
 def _parse_error_response(body: Any) -> Optional[Dict[str, Any]]:

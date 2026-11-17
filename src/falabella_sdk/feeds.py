@@ -1,9 +1,11 @@
 """Feeds resource for tracking asynchronous write operations."""
 
+import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from falabella_sdk.actions import Actions
+from falabella_sdk.client import FalabellaFeedError
 from falabella_sdk.responses import (
     FalabellaResponse,
     _text,
@@ -16,7 +18,19 @@ from falabella_sdk.responses import (
 if TYPE_CHECKING:
     from falabella_sdk.client import FalabellaClient
 
-_DONE_STATUSES = {"Finished", "Canceled"}
+_PENDING_STATUSES = {"Queued", "Processing"}
+
+
+def _is_positive_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0
+
+
+def validate_wait_options(timeout: Any, poll_interval: Any) -> None:
+    """Raise ``ValueError`` unless ``timeout`` and ``poll_interval`` are positive numbers."""
+    if not _is_positive_number(timeout):
+        raise ValueError("timeout must be a positive number")
+    if not _is_positive_number(poll_interval):
+        raise ValueError("poll_interval must be a positive number")
 
 
 def _count(element: Dict[str, Any], key: str) -> Optional[int]:
@@ -66,6 +80,18 @@ class FeedError:
     message: Optional[str]
 
 
+class FalabellaFeedTimeout(FalabellaFeedError):
+    """Error raised when waiting for a feed exceeds its timeout."""
+
+    def __init__(self, feed_status: "FeedStatus", timeout: float) -> None:
+        super().__init__(
+            feed_status,
+            message=(
+                f"Feed {feed_status.feed_id} still {feed_status.status} after {timeout}s"
+            ),
+        )
+
+
 @dataclass(frozen=True)
 class FeedStatus:
     feed_id: Optional[str]
@@ -83,8 +109,8 @@ class FeedStatus:
 
     @property
     def is_done(self) -> bool:
-        """Whether the feed reached a final state."""
-        return self.status in _DONE_STATUSES
+        """Whether the feed is no longer queued or processing."""
+        return bool(self.status) and self.status not in _PENDING_STATUSES
 
     @property
     def has_errors(self) -> bool:
@@ -102,6 +128,7 @@ class Feeds(Actions):
             client (FalabellaClient): An initialized Falabella client.
         """
         super().__init__(client)
+        self._clock = time.monotonic
 
     def list(self) -> FalabellaResponse:
         """List recent feeds.
@@ -130,3 +157,33 @@ class Feeds(Actions):
             'get', params={"Action": "FeedStatus", "FeedID": feed_id}
         )
         return _build_status(unwrap(raw))
+
+    def wait(self, feed_id: str, *, timeout: float = 300.0,
+             poll_interval: float = 5.0) -> FeedStatus:
+        """Poll a feed until it is done or the timeout elapses.
+
+        Args:
+            feed_id: Feed id returned in ``Head.RequestId`` by a write operation.
+            timeout: Maximum seconds to wait.
+            poll_interval: Seconds between polls, capped by the remaining time.
+
+        Returns:
+            FeedStatus: The last observed status, which is done.
+
+        Raises:
+            ValueError: If any argument is invalid (no request is sent).
+            FalabellaFeedTimeout: If the feed is still pending when ``timeout`` elapses.
+        """
+        if not isinstance(feed_id, str) or not feed_id:
+            raise ValueError("feed_id must be a non-empty string")
+        validate_wait_options(timeout, poll_interval)
+
+        started = self._clock()
+        while True:
+            feed_status = self.status(feed_id)
+            if feed_status.is_done:
+                return feed_status
+            remaining = timeout - (self._clock() - started)
+            if remaining <= 0:
+                raise FalabellaFeedTimeout(feed_status, timeout)
+            self.client._sleep(min(poll_interval, remaining))
