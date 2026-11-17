@@ -24,7 +24,7 @@ class Seller(Actions):
             dict: Datos del perfil del vendedor.
         """
         params = {
-            "Action": "GetSeller"
+            "Action": "GetSellerByUser"
         }
 
         return self.client.query('get', params=params)

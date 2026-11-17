@@ -122,7 +122,7 @@ El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades
     *   `set_status_to_cancelled(order_item_ids, reason, reason_detail=None)`
 
 ### 3. `client.seller` (Perfil del Vendedor)
-*   `get()`: Obtiene el perfil de vendedor y el estado general de la cuenta (`GetSeller`).
+*   `get()`: Obtiene el perfil de vendedor y el estado general de la cuenta (`GetSellerByUser`).
 
 ### 4. `client.shipments` (Envíos y Documentación)
 *   `get_providers()`: Obtiene el listado de transportistas disponibles (`GetShipmentProviders`).

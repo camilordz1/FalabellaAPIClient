@@ -11,5 +11,5 @@ def test_get_sends_get(client):
 
     call = responses.calls[0]
     assert call.request.method == "GET"
-    assert sent_params(call) == params("GetSeller")
+    assert sent_params(call) == params("GetSellerByUser")
     assert call.request.body is None
