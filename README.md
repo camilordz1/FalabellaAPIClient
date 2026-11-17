@@ -1,6 +1,6 @@
 # falabella-sdk
 
-[![CI](https://github.com/camilordz1/FalabellaAPIClient/actions/workflows/ci.yml/badge.svg)](https://github.com/camilordz1/FalabellaAPIClient/actions/workflows/ci.yml)
+[![CI](https://github.com/camilordz1/falabella-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/camilordz1/falabella-sdk/actions/workflows/ci.yml)
 
 **SDK no oficial** de Python para la API de Falabella Seller Center. Este proyecto no está afiliado ni respaldado por Falabella.
 

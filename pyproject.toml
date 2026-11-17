@@ -30,9 +30,9 @@ classifiers = [
 dev = ["pytest>=8.0", "responses>=0.25", "freezegun>=1.4", "ruff>=0.6"]
 
 [project.urls]
-Homepage = "https://github.com/camilordz1/FalabellaAPIClient"
-Source = "https://github.com/camilordz1/FalabellaAPIClient"
-Issues = "https://github.com/camilordz1/FalabellaAPIClient/issues"
+Homepage = "https://github.com/camilordz1/falabella-sdk"
+Source = "https://github.com/camilordz1/falabella-sdk"
+Issues = "https://github.com/camilordz1/falabella-sdk/issues"
 
 [tool.setuptools.dynamic]
 version = {attr = "falabella_sdk.__version__"}
