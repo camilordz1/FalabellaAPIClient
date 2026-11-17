@@ -172,7 +172,7 @@ def test_non_finite_numbers_are_rejected(value):
     [
         (Decimal("1E+3"), "1000"),
         (Decimal("49800.00"), "49800.00"),
-        (1e20, "100000000000000000000"),
+        (Decimal("1E+10"), "10000000000"),
         (1.5, "1.5"),
     ],
 )
@@ -189,3 +189,15 @@ def test_only_the_product_description_uses_cdata():
 
     assert "<Description><![CDATA[<p>x</p>]]></Description>" in xml
     assert "<ProductData><Description>&lt;b&gt;</Description></ProductData>" in xml
+
+
+@pytest.mark.parametrize("value", [10**15, Decimal("1E+16"), -1e15])
+def test_number_at_or_above_limit_is_rejected(value):
+    with pytest.raises(ValueError):
+        to_xml({"SellerSku": "A", "Stock": value})
+
+
+def test_number_below_limit_is_allowed():
+    xml = to_xml({"SellerSku": "A", "Stock": 999999999999999})
+
+    assert b"<Stock>999999999999999</Stock>" in xml
