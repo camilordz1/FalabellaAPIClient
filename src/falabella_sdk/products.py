@@ -1,7 +1,8 @@
 import json
-from datetime import date
+from datetime import date, datetime, timedelta, timezone, tzinfo
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence, Union
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from falabella_sdk.actions import Actions
 from falabella_sdk.client import FalabellaAPIError, FalabellaFeedError
@@ -61,13 +62,31 @@ def _decimal(value: Any) -> Optional[Decimal]:
     return number if number.is_finite() else None
 
 
-def _offer_has_ended(business_unit: Dict[str, Any]) -> bool:
-    """Whether ``SpecialToDate`` (``YYYY-MM-DD[ HH:MM:SS]``) is before today."""
+# Business unit time zones, with fixed fallbacks when the system has no tz database.
+_BUSINESS_UNIT_TIME_ZONES = {
+    "FACO": ("America/Bogota", -5),
+    "FACL": ("America/Santiago", -4),
+    "FAPE": ("America/Lima", -5),
+}
+
+
+def _business_unit_today(business_unit_code: str) -> date:
+    """Today's date in the business unit's time zone (offers end on local dates)."""
+    name, fallback_hours = _BUSINESS_UNIT_TIME_ZONES.get(business_unit_code, ("UTC", 0))
+    try:
+        zone: tzinfo = ZoneInfo(name)
+    except ZoneInfoNotFoundError:
+        zone = timezone(timedelta(hours=fallback_hours))
+    return datetime.now(zone).date()
+
+
+def _offer_has_ended(business_unit: Dict[str, Any], today: date) -> bool:
+    """Whether ``SpecialToDate`` (``YYYY-MM-DD[ HH:MM:SS]``) is before ``today``."""
     end = business_unit.get("SpecialToDate")
     if not isinstance(end, str) or len(end) < 10:
         return False
     try:
-        return date.fromisoformat(end[:10]) < date.today()
+        return date.fromisoformat(end[:10]) < today
     except ValueError:
         return False
 
@@ -76,6 +95,12 @@ def _check_special_below_price(seller_sku: str, business_unit: Dict[str, Any],
                                current_unit: Dict[str, Any]) -> None:
     """Reject an update whose SpecialPrice would not be below the Price (before writing)."""
     special = _decimal(business_unit.get("SpecialPrice"))
+    if special is not None and not (business_unit.get("SpecialFromDate")
+                                    or business_unit.get("SpecialToDate")):
+        raise ValueError(
+            f"{seller_sku}: SpecialPrice needs SpecialFromDate or SpecialToDate "
+            "(the current offer has no dates to keep)"
+        )
     price = _decimal(business_unit.get("Price", current_unit.get("Price")))
     if special is not None and price is not None and special >= price:
         raise ValueError(
@@ -292,6 +317,7 @@ class Products(Actions):
             raise ValueError(f"Unknown SellerSku: {', '.join(missing)}")
 
         operator_code = self.client.business_unit.lower()
+        today = _business_unit_today(self.client.business_unit)
         payloads = []
         for item in items:
             seller_sku = item["SellerSku"]
@@ -304,7 +330,7 @@ class Products(Actions):
             # caller clears it with SpecialPrice "" or the offer already ended: a SpecialPrice
             # without dates is rejected, and an expired offer must not be sent again.
             if (item.get("SpecialPrice") != "" and current_unit.get("SpecialPrice")
-                    and not _offer_has_ended(current_unit)):
+                    and not _offer_has_ended(current_unit, today)):
                 for field in ("SpecialPrice", "SpecialFromDate", "SpecialToDate"):
                     if field not in item:
                         business_unit[field] = current_unit.get(field, "")
