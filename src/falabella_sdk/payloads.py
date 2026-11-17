@@ -56,7 +56,11 @@ _HEADER = '<?xml version="1.0" encoding="UTF-8" ?>\n'
 _XML_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*$")
 # XML 1.0 forbids C0 controls except tab, newline and carriage return, and U+FFFE/U+FFFF.
 _XML_INVALID_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
+# Prices and stock are far below this; it catches typos such as an extra exponent.
 _MAX_ABS_NUMBER = 10**15
+_BOUNDED_KEYS = frozenset({"Price", "SpecialPrice", "Stock"})
+# Fixed-point output of larger exponents would expand to an absurd number of digits.
+_MAX_DECIMAL_EXPONENT = 30
 
 
 def _validate_name(name: str) -> None:
@@ -71,12 +75,14 @@ def _scalar_text(value: Any, key: str) -> str:
         number = Decimal(repr(value)) if isinstance(value, float) else value
         if not number.is_finite():
             raise ValueError(f"Value for key {key!r} must be a finite number")
-        if abs(number) >= _MAX_ABS_NUMBER:
+        if number and number.adjusted() > _MAX_DECIMAL_EXPONENT:
+            raise ValueError(f"Value for key {key!r} is too large")
+        if key in _BOUNDED_KEYS and abs(number) >= _MAX_ABS_NUMBER:
             raise ValueError(f"Value for key {key!r} must be below 10**15")
         # Fixed-point text: Decimal("1E+3") -> "1000", 1e20 -> "100000000000000000000".
         return format(number, "f")
     if isinstance(value, int):
-        if abs(value) >= _MAX_ABS_NUMBER:
+        if key in _BOUNDED_KEYS and abs(value) >= _MAX_ABS_NUMBER:
             raise ValueError(f"Value for key {key!r} must be below 10**15")
         text = str(value)
         if _XML_INVALID_CHARS.search(text):
