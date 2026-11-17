@@ -170,7 +170,14 @@ def test_status_invalid_counts_become_none(client):
 
 @pytest.mark.parametrize(
     "status, expected",
-    [("Finished", True), ("Canceled", True), ("Queued", False), ("Processing", False)],
+    [
+        ("Finished", True),
+        ("Canceled", True),
+        ("Error", True),
+        ("Queued", False),
+        ("Processing", False),
+        (None, False),
+    ],
 )
 @responses.activate
 def test_is_done(client, status, expected):
@@ -185,6 +192,7 @@ def test_is_done(client, status, expected):
         ({"FeedErrors": {"Error": ERROR}, "FailedRecords": "0"}, True),
         ({"FailedRecords": "3"}, True),
         ({"FailedRecords": "0"}, False),
+        ({"FailedRecords": None}, False),
     ],
 )
 @responses.activate

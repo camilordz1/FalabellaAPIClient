@@ -16,7 +16,7 @@ from falabella_sdk.responses import (
 if TYPE_CHECKING:
     from falabella_sdk.client import FalabellaClient
 
-_DONE_STATUSES = {"Finished", "Canceled"}
+_PENDING_STATUSES = {"Queued", "Processing"}
 
 
 def _count(element: Dict[str, Any], key: str) -> Optional[int]:
@@ -83,8 +83,8 @@ class FeedStatus:
 
     @property
     def is_done(self) -> bool:
-        """Whether the feed reached a final state."""
-        return self.status in _DONE_STATUSES
+        """Whether the feed is no longer queued or processing."""
+        return bool(self.status) and self.status not in _PENDING_STATUSES
 
     @property
     def has_errors(self) -> bool:
