@@ -341,3 +341,15 @@ def test_update_wait_timeout_raises_with_feed_id(client):
 
     assert exc_info.value.feed_id == "feed-9"
     assert exc_info.value.feed_status.status == "Processing"
+
+
+@responses.activate
+def test_update_wait_feed_error_falls_back_to_write_feed_id(client):
+    """FeedDetail without Feed: the error still carries the id returned by the write."""
+    add(responses.POST, write_response("feed-5"))
+    add(responses.GET, feed_response(Feed=None, Status="Canceled"))
+
+    with pytest.raises(FalabellaFeedError) as exc_info:
+        client.products.update("<Request/>", wait=True)
+
+    assert exc_info.value.feed_id == "feed-5"

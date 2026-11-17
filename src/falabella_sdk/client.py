@@ -42,11 +42,13 @@ class FalabellaFeedError(FalabellaAPIError):
     """Error raised when a feed ends with failures or a non-Finished status."""
 
     def __init__(self, feed_status: "FeedStatus", *,
-                 message: Optional[str] = None) -> None:
+                 message: Optional[str] = None, feed_id: Optional[str] = None) -> None:
         errors: List[FeedError] = feed_status.errors
+        # Prefer the id reported by the feed; fall back to the one the caller already knows.
+        feed_id = feed_status.feed_id or feed_id
         if message is None:
             message = (
-                f"Feed {feed_status.feed_id} {feed_status.status}: "
+                f"Feed {feed_id} {feed_status.status}: "
                 f"{feed_status.failed_records}/{feed_status.total_records} records failed"
             )
             if errors:
@@ -55,7 +57,7 @@ class FalabellaFeedError(FalabellaAPIError):
                 )
             if len(errors) > 3:
                 message += f" (+{len(errors) - 3} more)"
-        super().__init__(message, action=feed_status.action, feed_id=feed_status.feed_id)
+        super().__init__(message, action=feed_status.action, feed_id=feed_id)
         self.feed_status = feed_status
         self.errors = errors
 
