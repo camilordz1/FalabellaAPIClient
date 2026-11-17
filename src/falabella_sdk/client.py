@@ -228,7 +228,11 @@ class FalabellaClient:
 
         api_key = self.key.encode('utf-8')
         sorted_params = sorted(params.items())
-        concatenated = parse.urlencode(sorted_params).encode('utf-8')
+        # Falabella signs RFC 3986 percent-encoding (PHP rawurlencode): spaces must be %20,
+        # not '+'. Verified against the real API.
+        concatenated = parse.urlencode(
+            sorted_params, quote_via=parse.quote, safe=''
+        ).encode('utf-8')
         params['Signature'] = HMAC(api_key, concatenated, sha256).hexdigest()
 
         return params

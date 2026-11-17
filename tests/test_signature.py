@@ -3,6 +3,7 @@ import hmac
 import re
 from urllib.parse import quote, urlencode
 
+import pytest
 from freezegun import freeze_time
 
 FROZEN_TIME = "2026-01-15T10:30:00Z"
@@ -10,9 +11,9 @@ GOLDEN_SIGNATURE = "ab590d19c3315c1e93e364e0b5055d98b732b0c30021f0e5fa6fb3f055a9
 
 
 def _reference_signature(params, key):
-    """Compute the HMAC-SHA256 signature the way the current algorithm does."""
+    """Compute the HMAC-SHA256 signature over the RFC 3986 encoded, sorted params."""
     sorted_items = sorted(params.items())
-    encoded = urlencode(sorted_items).encode("utf-8")
+    encoded = urlencode(sorted_items, quote_via=quote, safe="").encode("utf-8")
     return hmac.new(key.encode("utf-8"), encoded, hashlib.sha256).hexdigest()
 
 
@@ -71,27 +72,39 @@ def test_does_not_mutate_input_params(client):
     assert params == original
 
 
-@freeze_time(FROZEN_TIME)
-def test_space_encoding_current_behavior(client):
-    params = {"Search": "red shoe"}
-    signature = client.signature(params)["Signature"]
-
-    signed_items = sorted(
+def _signed_string(extra):
+    items = sorted(
         {
             "UserID": "seller@example.com",
             "Version": "1.0",
             "Format": "JSON",
             "Timestamp": FROZEN_TIME,
-            "Search": "red shoe",
+            **extra,
         }.items()
     )
-    plus_encoded = urlencode(signed_items).encode("utf-8")
-    percent_encoded = urlencode(signed_items, quote_via=quote).encode("utf-8")
+    return urlencode(items, quote_via=quote, safe="")
 
-    assert signature == hmac.new(
-        b"test-api-key", plus_encoded, hashlib.sha256
-    ).hexdigest()
-    assert signature != hmac.new(
-        b"test-api-key", percent_encoded, hashlib.sha256
-    ).hexdigest()
-    # Docs are inconsistent (PHP sample: rawurlencode %20; Python sample: +). Pending real-API check F0-02b.
+
+@pytest.mark.parametrize(
+    ("value", "encoded"),
+    [
+        ("red shoe", "red%20shoe"),
+        ("ñandú", "%C3%B1and%C3%BA"),
+        ("12v/110v", "12v%2F110v"),
+        ("a+b", "a%2Bb"),
+        ("x~y-z_w.v", "x~y-z_w.v"),
+    ],
+)
+@freeze_time(FROZEN_TIME)
+def test_signature_uses_rfc3986_percent_encoding(client, value, encoded):
+    """Falabella signs like PHP rawurlencode: %20 for spaces and %2F for slashes.
+
+    Verified against the real API (F0-02b): '+' for spaces or a bare '/' gives E007
+    "Signature mismatch".
+    """
+    signed = _signed_string({"Search": value})
+    assert f"Search={encoded}&" in signed
+
+    expected = hmac.new(b"test-api-key", signed.encode("utf-8"), hashlib.sha256).hexdigest()
+
+    assert client.signature({"Search": value})["Signature"] == expected
