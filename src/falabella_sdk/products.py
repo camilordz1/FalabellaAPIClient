@@ -37,7 +37,7 @@ class Products(Actions):
                 error.feed_id = response.request_id
             raise
         if feed_status.has_errors or feed_status.status != "Finished":
-            raise FalabellaFeedError(feed_status)
+            raise FalabellaFeedError(feed_status, feed_id=response.request_id)
         return feed_status
 
     def get(self, limit: int = 1000, **kwargs: Any) -> FalabellaResponse:
