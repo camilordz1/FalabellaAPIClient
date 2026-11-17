@@ -137,3 +137,23 @@ def test_object_value_is_rejected():
 def test_non_dict_product_in_list_is_rejected():
     with pytest.raises(TypeError):
         to_xml([{"SellerSku": "A"}, "x"])
+
+
+@pytest.mark.parametrize("text", ["bad\x00", "tab\x0bvertical", "form\x0cfeed", "esc\x1b"])
+@pytest.mark.parametrize("key", ["Name", "Description"])
+def test_text_with_xml_invalid_characters_is_rejected(key, text):
+    """A control character makes the whole feed invalid XML, so fail before sending."""
+    with pytest.raises(ValueError, match=key):
+        to_xml({"SellerSku": "TP-1", key: text})
+
+
+def test_tab_newline_and_carriage_return_are_allowed():
+    xml = to_xml({"SellerSku": "TP-1", "Name": "a\tb\nc\rd"})
+
+    assert ElementTree.fromstring(xml).find(".//Name") is not None
+
+
+@pytest.mark.parametrize("sku", ["  ", "\t\n"])
+def test_blank_seller_sku_is_rejected(sku):
+    with pytest.raises(ValueError, match="SellerSku"):
+        to_xml({"SellerSku": sku})

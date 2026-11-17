@@ -41,6 +41,8 @@ class Product(_ProductRequired, total=False):
 
 _HEADER = '<?xml version="1.0" encoding="UTF-8" ?>\n'
 _XML_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*$")
+# XML 1.0 forbids C0 controls except tab, newline and carriage return, and U+FFFE/U+FFFF.
+_XML_INVALID_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
 
 
 def _validate_name(name: str) -> None:
@@ -52,7 +54,10 @@ def _scalar_text(value: Any, key: str) -> str:
     if isinstance(value, bool):
         raise TypeError(f"Unsupported bool value for key {key!r}")
     if isinstance(value, (str, int, float, Decimal)):
-        return str(value)
+        text = str(value)
+        if _XML_INVALID_CHARS.search(text):
+            raise ValueError(f"Value for key {key!r} has characters not allowed in XML")
+        return text
     raise TypeError(f"Unsupported value type for key {key!r}: {type(value).__name__}")
 
 
@@ -104,7 +109,7 @@ def to_xml(products: Union[Product, List[Product]]) -> bytes:
         if not isinstance(product, dict):
             raise TypeError("each product must be a dict")
         seller_sku = product.get("SellerSku")
-        if not isinstance(seller_sku, str) or not seller_sku:
+        if not isinstance(seller_sku, str) or not seller_sku.strip():
             raise ValueError("each product requires a non-empty SellerSku")
 
     body = "".join(_element("Product", product) for product in items)
