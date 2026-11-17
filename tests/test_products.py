@@ -456,6 +456,23 @@ def test_update_price_and_stock_keeps_current_offer(client):
 
 
 @responses.activate
+def test_update_price_and_stock_new_special_price_keeps_current_dates(client):
+    """A SpecialPrice without dates is rejected by Falabella, so keep the current ones."""
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+    current = PRICE_STOCK_SPECIAL["BusinessUnits"]["BusinessUnit"]
+
+    client.products.update_price_and_stock(
+        [{"SellerSku": "TP-10490", "SpecialPrice": "80000.00"}]
+    )
+
+    body = responses.calls[1].request.body.decode()
+    assert "<SpecialPrice>80000.00</SpecialPrice>" in body
+    assert f"<SpecialFromDate>{current['SpecialFromDate']}</SpecialFromDate>" in body
+    assert f"<SpecialToDate>{current['SpecialToDate']}</SpecialToDate>" in body
+
+
+@responses.activate
 def test_update_price_and_stock_empty_special_price_clears_the_offer(client):
     add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
     add(responses.POST, write_response())

@@ -264,7 +264,9 @@ class Products(Actions):
             for field in _PRICE_STOCK_FIELDS:
                 if field in item:
                     business_unit[field] = item[field]
-            if "SpecialPrice" not in item and current_unit.get("SpecialPrice"):
+            # Keep the current offer for every special field the caller did not set, unless the
+            # caller clears it with SpecialPrice "": a SpecialPrice without dates is rejected.
+            if item.get("SpecialPrice") != "" and current_unit.get("SpecialPrice"):
                 for field in ("SpecialPrice", "SpecialFromDate", "SpecialToDate"):
                     if field not in item:
                         business_unit[field] = current_unit.get(field, "")
