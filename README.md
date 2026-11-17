@@ -180,6 +180,8 @@ El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades
 *   `brands()`: Obtiene la lista de marcas asociadas del vendedor (`GetBrands`).
 *   `get_category_tree()`: Recupera la jerarquía completa de categorías de la plataforma.
 *   `get_category_attributes(primary_category_id)`: Retorna la lista de atributos y campos requeridos para una categoría específica.
+*   `upload_images(images, wait=False)`: Sube hasta 8 imágenes `https://` por SKU (máximo 50 SKU por llamada).
+*   `get_qc_status(skus=None, limit=100, offset=0)`: Consulta el estado de control de calidad.
 
 #### Enviar productos como diccionarios
 
@@ -238,6 +240,29 @@ Santiago o Lima) no se vuelve a enviar; un `SpecialPrice` nuevo necesita entonce
 un `SpecialPrice` igual o mayor que el `Price` (por ejemplo, al bajar el precio por debajo de la
 oferta vigente), el método falla antes de escribir: cambia también `SpecialPrice` o quita la oferta
 con `""`.
+
+#### Imágenes y control de calidad
+
+```python
+# Subir imágenes después de que el feed del create haya terminado
+client.products.upload_images(
+    {"TP-10490": ["https://cdn.example.com/1.jpg", "https://cdn.example.com/2.jpg"]},
+    wait=True,
+)
+
+# Estado de calidad
+for qc in client.products.get_qc_status(["TP-10490", "TP-18545"]).items:
+    if qc["Status"] == "rejected":
+        print(qc["SellerSKU"], qc["Reason"])
+```
+
+`upload_images` acepta hasta 50 SKU por llamada y máximo 8 URLs públicas `https://` por SKU. Las
+URLs se escapan en el XML (los `&` se envían como `&amp;`). Sube las imágenes después de que el
+feed de `create` haya terminado; si no, Falabella responde "Images Missing". El SDK no agrega
+esperas implícitas: usa `wait=True` en el create.
+
+`get_qc_status` devuelve los estados en `items`, con las claves tal como las envía la API
+(`SellerSKU`, `Status`, `Reason`). Sin lista de SKUs puedes paginar con `limit` y `offset`.
 
 ### 2. `client.orders` (Órdenes de Venta)
 *   `list(**kwargs)`: Obtiene la lista de órdenes (`GetOrders`).
