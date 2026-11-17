@@ -280,3 +280,18 @@ def test_update_wait_false_returns_response_with_one_request(client):
 
     assert isinstance(result, FalabellaResponse)
     assert len(responses.calls) == 1
+
+
+@pytest.mark.parametrize("method", ["create", "update", "remove"])
+@pytest.mark.parametrize(
+    "options", [{"timeout": 0}, {"timeout": True}, {"poll_interval": -1}]
+)
+@responses.activate
+def test_wait_options_are_validated_before_sending_the_write(client, method, options):
+    """An invalid wait option must not send the write: a retry would duplicate the feed."""
+    add(responses.POST)
+
+    with pytest.raises(ValueError):
+        getattr(client.products, method)("<Request/>", wait=True, **options)
+
+    assert len(responses.calls) == 0

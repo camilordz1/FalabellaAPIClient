@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any, Union
 
 from falabella_sdk.actions import Actions
 from falabella_sdk.client import FalabellaAPIError, FalabellaFeedError
+from falabella_sdk.feeds import validate_wait_options
 from falabella_sdk.responses import FalabellaResponse, unwrap, unwrap_collection
 
 if TYPE_CHECKING:
@@ -75,6 +76,9 @@ class Products(Actions):
             "Action": "ProductCreate"
         }
 
+        if wait:
+            # Validate before sending: a write that fails afterwards would be retried.
+            validate_wait_options(timeout, poll_interval)
         response = unwrap(self.client.query('post', params=params, payload=payload))
         if wait:
             return self._wait_for_feed(response, "ProductCreate", timeout, poll_interval)
@@ -99,6 +103,9 @@ class Products(Actions):
             "Action": "ProductUpdate"
         }
 
+        if wait:
+            # Validate before sending: a write that fails afterwards would be retried.
+            validate_wait_options(timeout, poll_interval)
         response = unwrap(self.client.query('post', params=params, payload=payload))
         if wait:
             return self._wait_for_feed(response, "ProductUpdate", timeout, poll_interval)
@@ -123,6 +130,9 @@ class Products(Actions):
             "Action": "ProductRemove"
         }
 
+        if wait:
+            # Validate before sending: a write that fails afterwards would be retried.
+            validate_wait_options(timeout, poll_interval)
         response = unwrap(self.client.query('post', params=params, payload=payload))
         if wait:
             return self._wait_for_feed(response, "ProductRemove", timeout, poll_interval)

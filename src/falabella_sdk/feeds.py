@@ -25,6 +25,14 @@ def _is_positive_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0
 
 
+def validate_wait_options(timeout: Any, poll_interval: Any) -> None:
+    """Raise ``ValueError`` unless ``timeout`` and ``poll_interval`` are positive numbers."""
+    if not _is_positive_number(timeout):
+        raise ValueError("timeout must be a positive number")
+    if not _is_positive_number(poll_interval):
+        raise ValueError("poll_interval must be a positive number")
+
+
 def _count(element: Dict[str, Any], key: str) -> Optional[int]:
     """Read a count field with the same rules as ``FalabellaResponse.total_count``."""
     return _total_count({"TotalCount": element.get(key)})
@@ -168,10 +176,7 @@ class Feeds(Actions):
         """
         if not isinstance(feed_id, str) or not feed_id:
             raise ValueError("feed_id must be a non-empty string")
-        if not _is_positive_number(timeout):
-            raise ValueError("timeout must be a positive number")
-        if not _is_positive_number(poll_interval):
-            raise ValueError("poll_interval must be a positive number")
+        validate_wait_options(timeout, poll_interval)
 
         started = self._clock()
         while True:
