@@ -24,6 +24,19 @@ class _ProductRequired(TypedDict):
     SellerSku: str
 
 
+class _PriceStockUpdateRequired(TypedDict):
+    SellerSku: str
+
+
+class PriceStockUpdate(_PriceStockUpdateRequired, total=False):
+    Price: Union[str, int, float, Decimal]
+    Stock: Union[str, int, float, Decimal]
+    SpecialPrice: Union[str, int, float, Decimal]
+    SpecialFromDate: Union[str, int, float, Decimal]
+    SpecialToDate: Union[str, int, float, Decimal]
+    Status: Union[str, int, float, Decimal]
+
+
 class Product(_ProductRequired, total=False):
     ParentSku: str
     Name: str

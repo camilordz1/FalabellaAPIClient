@@ -20,6 +20,7 @@ def test_public_api():
         "Product",
         "BusinessUnit",
         "BusinessUnits",
+        "PriceStockUpdate",
         "to_xml",
         "Products",
         "Orders",

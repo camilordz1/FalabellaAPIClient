@@ -1,3 +1,4 @@
+import json
 import re
 from decimal import Decimal
 from pathlib import Path
@@ -8,6 +9,7 @@ import responses
 
 from falabella_sdk import (
     FalabellaAPIError,
+    FalabellaClient,
     FalabellaFeedError,
     FalabellaFeedTimeout,
     FalabellaResponse,
@@ -413,3 +415,203 @@ def test_create_and_remove_accept_dict_payloads(client, method):
 
     assert b"<SellerSku>TP-1</SellerSku>" in responses.calls[0].request.body
 
+
+
+PRICE_STOCK_SPECIAL = {
+    "SellerSku": "TP-10490",
+    "BusinessUnits": {
+        "BusinessUnit": {
+            "OperatorCode": "faco",
+            "Price": "310000.00",
+            "SpecialPrice": "250000.00",
+            "SpecialFromDate": "2026-11-09 00:00:00",
+            "SpecialToDate": "2026-11-20 00:00:00",
+            "Stock": "0",
+            "Status": "active",
+        }
+    },
+}
+
+
+def products_response(products):
+    return {
+        "SuccessResponse": {
+            "Head": {"RequestId": "req-1"},
+            "Body": {"Products": {"Product": products}},
+        }
+    }
+
+
+@responses.activate
+def test_update_price_and_stock_keeps_current_offer(client):
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+
+    client.products.update_price_and_stock([{"SellerSku": "TP-10490", "Stock": 12}])
+
+    body = responses.calls[1].request.body
+    assert body == (GOLDEN / "price_stock_keep_special.xml").read_bytes()
+    assert b"<Price>" not in body
+    assert b"<Status>" not in body
+
+
+@responses.activate
+def test_update_price_and_stock_empty_special_price_clears_the_offer(client):
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+
+    client.products.update_price_and_stock(
+        [{"SellerSku": "TP-10490", "SpecialPrice": ""}]
+    )
+
+    body = responses.calls[1].request.body
+    assert b"<SpecialPrice></SpecialPrice>" in body
+    assert b"SpecialFromDate" not in body
+    assert b"SpecialToDate" not in body
+
+
+@responses.activate
+def test_update_price_and_stock_without_current_offer_adds_no_special_fields(client):
+    current = {
+        "SellerSku": "TP-13027",
+        "BusinessUnits": {
+            "BusinessUnit": {
+                "OperatorCode": "faco",
+                "Price": "89900.00",
+                "SpecialPrice": "",
+                "Stock": "4",
+            }
+        },
+    }
+    add(responses.GET, products_response([current]))
+    add(responses.POST, write_response())
+
+    client.products.update_price_and_stock(
+        [{"SellerSku": "TP-13027", "Price": Decimal("85000.00")}]
+    )
+
+    body = responses.calls[1].request.body
+    assert b"<Price>85000.00</Price>" in body
+    assert b"SpecialPrice" not in body
+
+
+@responses.activate
+def test_update_price_and_stock_selects_matching_business_unit(client):
+    current = {
+        "SellerSku": "TP-1",
+        "BusinessUnits": {
+            "BusinessUnit": [
+                {"OperatorCode": "other", "Price": "1.00"},
+                {
+                    "OperatorCode": "faco",
+                    "SpecialPrice": "250000.00",
+                    "SpecialFromDate": "2026-11-09 00:00:00",
+                    "SpecialToDate": "2026-11-20 00:00:00",
+                },
+            ]
+        },
+    }
+    add(responses.GET, products_response([current]))
+    add(responses.POST, write_response())
+
+    client.products.update_price_and_stock([{"SellerSku": "TP-1", "Stock": 3}])
+
+    body = responses.calls[1].request.body
+    assert b"<OperatorCode>faco</OperatorCode>" in body
+    assert b"<Price>1.00</Price>" not in body
+    assert b"<SpecialPrice>250000.00</SpecialPrice>" in body
+
+
+@responses.activate
+def test_update_price_and_stock_uses_client_business_unit():
+    facl_client = FalabellaClient(
+        user="seller@example.com", key="test-api-key", seller_id="ABC123",
+        business_unit="FACL",
+    )
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+
+    facl_client.products.update_price_and_stock([{"SellerSku": "TP-10490", "Stock": 1}])
+
+    assert b"<OperatorCode>facl</OperatorCode>" in responses.calls[1].request.body
+
+
+@responses.activate
+def test_update_price_and_stock_sends_one_get_and_one_update_for_three_skus(client):
+    current = [
+        {"SellerSku": "TP-1", "BusinessUnits": {"BusinessUnit": {}}},
+        {"SellerSku": "TP-2", "BusinessUnits": {"BusinessUnit": {}}},
+        {"SellerSku": "TP-3", "BusinessUnits": {"BusinessUnit": {}}},
+    ]
+    add(responses.GET, products_response(current))
+    add(responses.POST, write_response())
+
+    client.products.update_price_and_stock(
+        [
+            {"SellerSku": "TP-1", "Stock": 1},
+            {"SellerSku": "TP-2", "Stock": 2},
+            {"SellerSku": "TP-3", "Stock": 3},
+        ]
+    )
+
+    assert len(responses.calls) == 2
+    assert responses.calls[0].request.method == "GET"
+    assert responses.calls[1].request.method == "POST"
+    assert sent_params(responses.calls[0])["SkuSellerList"] == json.dumps(
+        ["TP-1", "TP-2", "TP-3"]
+    )
+
+
+@responses.activate
+def test_update_price_and_stock_unknown_sku_does_not_write(client):
+    add(responses.GET, products_response([{"SellerSku": "TP-1", "BusinessUnits": {}}]))
+
+    with pytest.raises(ValueError):
+        client.products.update_price_and_stock(
+            [{"SellerSku": "TP-1", "Stock": 1}, {"SellerSku": "TP-404", "Stock": 1}]
+        )
+
+    assert len(responses.calls) == 1
+    assert responses.calls[0].request.method == "GET"
+
+
+@pytest.mark.parametrize(
+    "items",
+    [
+        [],
+        [{"SellerSku": "TP-1", "Stock": 1}, {"SellerSku": "TP-1", "Stock": 2}],
+        [{"SellerSku": "TP-1"}],
+        [{"Stock": 1}],
+        [{"SellerSku": f"TP-{index}", "Stock": 1} for index in range(51)],
+    ],
+)
+@responses.activate
+def test_update_price_and_stock_invalid_items_send_no_request(client, items):
+    with pytest.raises(ValueError):
+        client.products.update_price_and_stock(items)
+
+    assert len(responses.calls) == 0
+
+
+@responses.activate
+def test_update_price_and_stock_invalid_wait_options_send_no_request(client):
+    with pytest.raises(ValueError):
+        client.products.update_price_and_stock(
+            [{"SellerSku": "TP-1", "Stock": 1}], wait=True, timeout=0
+        )
+
+    assert len(responses.calls) == 0
+
+
+@responses.activate
+def test_update_price_and_stock_wait_returns_feed_status(client):
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+    add(responses.GET, feed_response())
+
+    result = client.products.update_price_and_stock(
+        [{"SellerSku": "TP-10490", "Stock": 1}], wait=True
+    )
+
+    assert isinstance(result, FeedStatus)
+    assert len(responses.calls) == 3
