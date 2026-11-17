@@ -209,6 +209,8 @@ El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades
 
 ## Cambios incompatibles
 
+Consulta el [registro de cambios](CHANGELOG.md) para ver qué cambió en cada versión.
+
 - Python 3.9 ya no es compatible; la versión mínima es Python 3.10.
 - Los métodos de recursos ahora devuelven `FalabellaResponse` en lugar del diccionario crudo; la
   respuesta original sigue disponible en `.raw` y los elementos de colección están en `.items`.
