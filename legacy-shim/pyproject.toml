@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "FalabellaAPIClient"
+version = "0.2.0"
+description = "Deprecated: renamed to falabella-sdk (unofficial Falabella Seller Center SDK)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Camilo Andrés Rodríguez Higuera", email = "andres.roh@outlook.com"},
+]
+keywords = ["falabella", "falabella-sdk", "seller center", "deprecated"]
+classifiers = [
+    "Development Status :: 7 - Inactive",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+dependencies = ["falabella-sdk>=1.0.0a1"]
+
+[project.urls]
+Homepage = "https://github.com/camilordz1/FalabellaAPIClient"
+Source = "https://github.com/camilordz1/FalabellaAPIClient"
+Issues = "https://github.com/camilordz1/FalabellaAPIClient/issues"
+"New package" = "https://pypi.org/project/falabella-sdk/"
+
+[tool.setuptools.packages.find]
+where = ["src"]
