@@ -380,8 +380,8 @@ class Products(Actions):
             return self._wait_for_feed(response, "Image", timeout, poll_interval)
         return response
 
-    def get_qc_status(self, skus: Any = None, *, limit: int = 100,
-                      offset: int = 0) -> FalabellaResponse:
+    def get_qc_status(self, skus: Any = None, *, limit: Optional[int] = None,
+                      offset: Optional[int] = None) -> FalabellaResponse:
         """Get the quality-control status for SKUs or a page of results.
 
         Args:
@@ -389,6 +389,9 @@ class Products(Actions):
                 ``limit`` and ``offset`` are used instead.
             limit: Page size between 1 and 100. Defaults to 100.
             offset: Page offset. Defaults to 0.
+
+        ``limit``/``offset`` cannot be combined with ``skus`` (the API does not paginate a SKU
+        list), so passing both raises ``ValueError``.
 
         Returns:
             FalabellaResponse: QC states in ``items`` with the API key names
@@ -398,6 +401,9 @@ class Products(Actions):
             ValueError: If the SKU list or pagination is invalid (no request is sent).
         """
         if skus is not None:
+            if limit is not None or offset is not None:
+                # The API does not paginate a SKU list, so these would be silently ignored.
+                raise ValueError("limit and offset cannot be combined with skus")
             if not isinstance(skus, (list, tuple)):
                 raise ValueError("skus must be a list of SellerSku values")
             if not 1 <= len(skus) <= 100:
@@ -414,6 +420,8 @@ class Products(Actions):
                 "SkuSellerList": json.dumps(list(skus)),
             }
         else:
+            limit = 100 if limit is None else limit
+            offset = 0 if offset is None else offset
             if (not isinstance(limit, int) or isinstance(limit, bool)
                     or not 1 <= limit <= 100):
                 raise ValueError("limit must be an integer between 1 and 100")

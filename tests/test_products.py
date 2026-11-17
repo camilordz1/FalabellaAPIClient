@@ -884,3 +884,35 @@ def test_get_qc_status_invalid_input_sends_no_request(client, kwargs):
         client.products.get_qc_status(**kwargs)
 
     assert len(responses.calls) == 0
+
+
+@responses.activate
+def test_get_qc_status_accepts_single_state_dict(client):
+    add(responses.GET, qc_response({"State": {"SellerSKU": "TP-1", "Status": "approved"}}))
+
+    result = client.products.get_qc_status(["TP-1"])
+
+    assert result.items == [{"SellerSKU": "TP-1", "Status": "approved"}]
+
+
+@pytest.mark.parametrize("options", [{"limit": 10}, {"offset": 5}, {"limit": 100, "offset": 0}])
+@responses.activate
+def test_get_qc_status_rejects_pagination_with_skus(client, options):
+    """With a SKU list the API does not paginate, so limit/offset would be ignored."""
+    add(responses.GET, qc_response([]))
+
+    with pytest.raises(ValueError, match="limit"):
+        client.products.get_qc_status(["TP-1"], **options)
+
+    assert len(responses.calls) == 0
+
+
+@pytest.mark.parametrize("url", ["https://", "https:///a.jpg", "https://x/a b.jpg", "https://x/\ta.jpg"])
+@responses.activate
+def test_upload_images_rejects_urls_without_host_or_with_spaces(client, url):
+    add(responses.POST)
+
+    with pytest.raises(ValueError, match="TP-1"):
+        client.products.upload_images({"TP-1": [url]})
+
+    assert len(responses.calls) == 0
