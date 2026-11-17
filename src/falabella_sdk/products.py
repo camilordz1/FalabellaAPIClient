@@ -16,7 +16,9 @@ ProductPayload = Union[str, bytes, Product, Sequence[Product]]
 def _xml_payload(payload: ProductPayload) -> Any:
     if isinstance(payload, (dict, list, tuple)):
         return to_xml(payload)
-    return payload
+    if isinstance(payload, (str, bytes)):
+        return payload
+    raise TypeError("payload must be XML (str or bytes), a product dict or a list of them")
 
 
 class Products(Actions):

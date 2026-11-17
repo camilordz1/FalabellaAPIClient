@@ -392,9 +392,24 @@ def test_update_accepts_list_of_dicts_in_one_request(client):
     assert responses.calls[0].request.body == (GOLDEN / "two_products.xml").read_bytes()
 
 
+@pytest.mark.parametrize("method", ["create", "update", "remove"])
+@pytest.mark.parametrize("payload", [42, 4.2, object(), {1, 2}])
 @responses.activate
-def test_update_rejects_unsupported_payload_without_request(client):
+def test_unsupported_payload_is_rejected_without_request(client, method, payload):
+    add(responses.POST)
+
     with pytest.raises(TypeError):
-        client.products.update(42)
+        getattr(client.products, method)(payload)
 
     assert len(responses.calls) == 0
+
+
+@pytest.mark.parametrize("method", ["create", "remove"])
+@responses.activate
+def test_create_and_remove_accept_dict_payloads(client, method):
+    add(responses.POST)
+
+    getattr(client.products, method)({"SellerSku": "TP-1"})
+
+    assert b"<SellerSku>TP-1</SellerSku>" in responses.calls[0].request.body
+

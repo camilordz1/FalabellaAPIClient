@@ -157,3 +157,35 @@ def test_tab_newline_and_carriage_return_are_allowed():
 def test_blank_seller_sku_is_rejected(sku):
     with pytest.raises(ValueError, match="SellerSku"):
         to_xml({"SellerSku": sku})
+
+
+@pytest.mark.parametrize(
+    "value", [float("nan"), float("inf"), float("-inf"), Decimal("NaN"), Decimal("Infinity")]
+)
+def test_non_finite_numbers_are_rejected(value):
+    with pytest.raises(ValueError, match="Price"):
+        to_xml({"SellerSku": "TP-1", "BusinessUnits": {"BusinessUnit": {"Price": value}}})
+
+
+@pytest.mark.parametrize(
+    ("value", "text"),
+    [
+        (Decimal("1E+3"), "1000"),
+        (Decimal("49800.00"), "49800.00"),
+        (1e20, "100000000000000000000"),
+        (1.5, "1.5"),
+    ],
+)
+def test_numbers_are_written_without_exponent(value, text):
+    xml = to_xml({"SellerSku": "TP-1", "BusinessUnits": {"BusinessUnit": {"Price": value}}})
+
+    assert ElementTree.fromstring(xml).find(".//Price").text == text
+
+
+def test_only_the_product_description_uses_cdata():
+    xml = to_xml(
+        {"SellerSku": "TP-1", "Description": "<p>x</p>", "ProductData": {"Description": "<b>"}}
+    ).decode()
+
+    assert "<Description><![CDATA[<p>x</p>]]></Description>" in xml
+    assert "<ProductData><Description>&lt;b&gt;</Description></ProductData>" in xml

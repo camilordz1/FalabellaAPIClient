@@ -53,7 +53,13 @@ def _validate_name(name: str) -> None:
 def _scalar_text(value: Any, key: str) -> str:
     if isinstance(value, bool):
         raise TypeError(f"Unsupported bool value for key {key!r}")
-    if isinstance(value, (str, int, float, Decimal)):
+    if isinstance(value, (float, Decimal)):
+        number = Decimal(repr(value)) if isinstance(value, float) else value
+        if not number.is_finite():
+            raise ValueError(f"Value for key {key!r} must be a finite number")
+        # Fixed-point text: Decimal("1E+3") -> "1000", 1e20 -> "100000000000000000000".
+        return format(number, "f")
+    if isinstance(value, (str, int)):
         text = str(value)
         if _XML_INVALID_CHARS.search(text):
             raise ValueError(f"Value for key {key!r} has characters not allowed in XML")
@@ -61,20 +67,21 @@ def _scalar_text(value: Any, key: str) -> str:
     raise TypeError(f"Unsupported value type for key {key!r}: {type(value).__name__}")
 
 
-def _element(name: str, value: Any) -> str:
+def _element(name: str, value: Any, parent: str = "") -> str:
     _validate_name(name)
     if value is None:
         return ""
     if isinstance(value, list):
-        return "".join(_element(name, item) for item in value)
+        return "".join(_element(name, item, parent) for item in value)
     if isinstance(value, dict):
         children = "".join(
-            _element(child_name, child_value) for child_name, child_value in value.items()
+            _element(child_name, child_value, name) for child_name, child_value in value.items()
         )
         return f"<{name}>{children}</{name}>"
 
     text = _scalar_text(value, name)
-    if name == "Description":
+    # Only the product description carries HTML; any other "Description" is plain text.
+    if name == "Description" and parent == "Product":
         text = text.replace("]]>", "]]]]><![CDATA[>")
         return f"<{name}><![CDATA[{text}]]></{name}>"
     return f"<{name}>{escape(text)}</{name}>"
