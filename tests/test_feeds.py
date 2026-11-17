@@ -1,7 +1,13 @@
 import pytest
 import responses
 
-from falabella_sdk import FalabellaAPIError, Feeds, FeedStatus
+from falabella_sdk import (
+    FalabellaAPIError,
+    FalabellaFeedError,
+    FalabellaFeedTimeout,
+    Feeds,
+    FeedStatus,
+)
 from tests.helpers import add, sent_params
 
 FEED = {
@@ -231,3 +237,146 @@ def test_unknown_feed_raises_api_error(client):
 def test_feeds_property_is_lazy_and_cached(client):
     assert isinstance(client.feeds, Feeds)
     assert client.feeds is client.feeds
+
+
+class FakeTime:
+    def __init__(self):
+        self.now = 0.0
+        self.sleeps = []
+
+    def clock(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def use_fake_time(client):
+    fake = FakeTime()
+    client.feeds._clock = fake.clock
+    client._sleep = fake.sleep
+    return fake
+
+
+@responses.activate
+def test_wait_returns_immediately_when_done(client):
+    add(responses.GET, success({"FeedDetail": detail()}))
+    fake = use_fake_time(client)
+
+    result = client.feeds.wait("feed-1")
+
+    assert result.is_done
+    assert fake.sleeps == []
+
+
+@responses.activate
+def test_wait_polls_until_done_without_extra_sleeps(client):
+    for status in ("Queued", "Processing", "Finished"):
+        add(responses.GET, success({"FeedDetail": detail(Status=status)}))
+    fake = use_fake_time(client)
+
+    result = client.feeds.wait("feed-1")
+
+    assert result.status == "Finished"
+    assert fake.sleeps == [5.0, 5.0]
+
+
+@responses.activate
+def test_wait_sleep_is_capped_by_remaining_time(client):
+    for _ in range(3):
+        add(responses.GET, success({"FeedDetail": detail(Status="Processing")}))
+    fake = use_fake_time(client)
+
+    with pytest.raises(FalabellaFeedTimeout) as exc_info:
+        client.feeds.wait("feed-1", timeout=7.0, poll_interval=5.0)
+
+    assert fake.sleeps == [5.0, 2.0]
+    assert exc_info.value.feed_status.status == "Processing"
+    assert str(exc_info.value) == "Feed feed-1 still Processing after 7.0s"
+
+
+@responses.activate
+def test_wait_timeout_keeps_last_status(client):
+    add(responses.GET, success({"FeedDetail": detail(Status="Queued")}))
+    add(responses.GET, success({"FeedDetail": detail(Status="Queued")}))
+    fake = use_fake_time(client)
+
+    with pytest.raises(FalabellaFeedTimeout) as exc_info:
+        client.feeds.wait("feed-1", timeout=0.5, poll_interval=1.0)
+
+    assert exc_info.value.feed_status.status == "Queued"
+    assert fake.sleeps == [0.5]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"timeout": 0},
+        {"timeout": -1},
+        {"timeout": True},
+        {"poll_interval": 0},
+        {"poll_interval": -1},
+        {"poll_interval": True},
+    ],
+)
+@responses.activate
+def test_wait_invalid_options_raise_without_request(client, kwargs):
+    with pytest.raises(ValueError):
+        client.feeds.wait("feed-1", **kwargs)
+
+    assert len(responses.calls) == 0
+
+
+@pytest.mark.parametrize("feed_id", ["", None, 123])
+@responses.activate
+def test_wait_invalid_feed_id_raises_without_request(client, feed_id):
+    with pytest.raises(ValueError):
+        client.feeds.wait(feed_id)
+
+    assert len(responses.calls) == 0
+
+
+@responses.activate
+def test_feed_error_message_with_one_error(client):
+    add(
+        responses.GET,
+        success(
+            {
+                "FeedDetail": detail(
+                    FeedErrors={"Error": ERROR}, TotalRecords="1", FailedRecords="1"
+                )
+            }
+        ),
+    )
+    feed_status = client.feeds.status("feed-1")
+
+    error = FalabellaFeedError(feed_status)
+
+    assert isinstance(error, FalabellaAPIError)
+    assert error.action == "ProductUpdate"
+    assert error.feed_status is feed_status
+    assert error.errors == feed_status.errors
+    assert "Feed feed-1 Finished: 1/1 records failed" in str(error)
+    assert f"TP-18545: {ERROR['Message']}" in str(error)
+
+
+@responses.activate
+def test_feed_error_message_shows_three_errors_and_the_rest(client):
+    errors = [
+        {"Code": "0", "Message": f"message-{index}", "SellerSku": f"TP-{index}"}
+        for index in range(5)
+    ]
+    add(
+        responses.GET,
+        success({"FeedDetail": detail(FeedErrors={"Error": errors}, FailedRecords="5")}),
+    )
+    feed_status = client.feeds.status("feed-1")
+
+    message = str(FalabellaFeedError(feed_status))
+
+    assert "TP-0: message-0" in message
+    assert "TP-1: message-1" in message
+    assert "TP-2: message-2" in message
+    assert "TP-3: message-3" not in message
+    assert message.endswith("(+2 more)")

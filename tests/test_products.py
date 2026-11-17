@@ -1,6 +1,12 @@
+import pytest
 import responses
 
-from falabella_sdk import FalabellaResponse
+from falabella_sdk import (
+    FalabellaAPIError,
+    FalabellaFeedError,
+    FalabellaResponse,
+    FeedStatus,
+)
 from tests.helpers import RESPONSE, add, params, sent_params
 
 
@@ -197,3 +203,80 @@ def test_create_exposes_request_id(client):
     add(responses.POST, raw)
 
     assert client.products.create("<Request/>").request_id == "feed-123"
+
+
+FEED_FINISHED = {
+    "Feed": "feed-1",
+    "Status": "Finished",
+    "Action": "ProductUpdate",
+    "TotalRecords": "1",
+    "ProcessedRecords": "1",
+    "FailedRecords": "0",
+}
+FEED_ERROR = {"Code": "0", "Message": "Not applicable", "SellerSku": "TP-18545"}
+
+
+def write_response(feed_id="feed-1"):
+    return {"SuccessResponse": {"Head": {"RequestId": feed_id}, "Body": {}}}
+
+
+def feed_response(**overrides):
+    payload = dict(FEED_FINISHED)
+    payload.update(overrides)
+    return {"SuccessResponse": {"Head": {}, "Body": {"FeedDetail": payload}}}
+
+
+@responses.activate
+def test_update_wait_returns_feed_status(client):
+    add(responses.POST, write_response())
+    add(responses.GET, feed_response())
+
+    result = client.products.update("<Request/>", wait=True)
+
+    assert isinstance(result, FeedStatus)
+    assert result.processed_records == 1
+    assert len(responses.calls) == 2
+
+
+@responses.activate
+def test_update_wait_raises_feed_error_with_sku(client):
+    add(responses.POST, write_response())
+    add(
+        responses.GET,
+        feed_response(FailedRecords="1", FeedErrors={"Error": FEED_ERROR}),
+    )
+
+    with pytest.raises(FalabellaFeedError) as exc_info:
+        client.products.update("<Request/>", wait=True)
+
+    assert exc_info.value.errors[0].seller_sku == "TP-18545"
+
+
+@responses.activate
+def test_update_wait_raises_for_canceled_feed(client):
+    add(responses.POST, write_response())
+    add(responses.GET, feed_response(Status="Canceled"))
+
+    with pytest.raises(FalabellaFeedError):
+        client.products.update("<Request/>", wait=True)
+
+
+@responses.activate
+def test_update_wait_without_feed_id_raises(client):
+    add(responses.POST, write_response(feed_id=""))
+
+    with pytest.raises(FalabellaAPIError) as exc_info:
+        client.products.update("<Request/>", wait=True)
+
+    assert "no feed id" in str(exc_info.value)
+    assert len(responses.calls) == 1
+
+
+@responses.activate
+def test_update_wait_false_returns_response_with_one_request(client):
+    add(responses.POST, write_response())
+
+    result = client.products.update("<Request/>")
+
+    assert isinstance(result, FalabellaResponse)
+    assert len(responses.calls) == 1

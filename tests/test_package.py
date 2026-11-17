@@ -11,6 +11,8 @@ def test_public_api():
     expected = {
         "FalabellaClient",
         "FalabellaAPIError",
+        "FalabellaFeedError",
+        "FalabellaFeedTimeout",
         "FalabellaResponse",
         "FeedError",
         "Feeds",
