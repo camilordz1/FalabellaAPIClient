@@ -1,5 +1,6 @@
 import json
-from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+
 from falabella_sdk.actions import Actions
 
 if TYPE_CHECKING:
@@ -117,7 +118,8 @@ class Orders(Actions):
         return self.client.query('post', params=params)
 
     def set_status_to_ready_to_ship(self, order_item_ids: Union[List[Union[int, str]], str],
-                                    shipping_provider: str, tracking_number: str, delivery_type: str,
+                                    shipping_provider: str, tracking_number: str,
+                                    delivery_type: str,
                                     **kwargs: Any) -> Dict[str, Any]:
         """Marca los ítems de la orden como listos para despachar (ReadyToShip).
 

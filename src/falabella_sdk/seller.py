@@ -1,4 +1,5 @@
-from typing import Any, Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
+
 from falabella_sdk.actions import Actions
 
 if TYPE_CHECKING:

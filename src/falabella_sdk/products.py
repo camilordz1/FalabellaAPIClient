@@ -1,4 +1,5 @@
-from typing import Any, Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
+
 from falabella_sdk.actions import Actions
 
 if TYPE_CHECKING:
@@ -40,7 +41,8 @@ class Products(Actions):
         """Crea nuevos productos en la plataforma.
 
         Args:
-            payload (Any): Datos de los productos (usualmente una cadena XML con estructura de producto).
+            payload (Any): Datos de los productos (usualmente una cadena XML con
+                estructura de producto).
 
         Returns:
             dict: Respuesta del servidor a la operación de creación.

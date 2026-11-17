@@ -1,6 +1,6 @@
-from falabella_sdk.client import FalabellaClient, FalabellaAPIError
-from falabella_sdk.products import Products
+from falabella_sdk.client import FalabellaAPIError, FalabellaClient
 from falabella_sdk.orders import Orders
+from falabella_sdk.products import Products
 from falabella_sdk.seller import Seller
 from falabella_sdk.shipments import Shipments
 

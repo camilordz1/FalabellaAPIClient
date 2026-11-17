@@ -1,5 +1,7 @@
 # falabella-sdk
 
+[![CI](https://github.com/camilordz1/FalabellaAPIClient/actions/workflows/ci.yml/badge.svg)](https://github.com/camilordz1/FalabellaAPIClient/actions/workflows/ci.yml)
+
 **Unofficial** Python SDK for the Falabella Seller Center API. This project is not affiliated with
 or endorsed by Falabella.
 
@@ -12,6 +14,8 @@ Este módulo permite interactuar de manera sencilla y eficiente con la API de Fa
 ```bash
 pip install falabella-sdk
 ```
+
+Requires Python 3.10+.
 
 ---
 
@@ -129,6 +133,7 @@ El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades
 
 ## Breaking changes
 
+- Python 3.9 is no longer supported; the minimum version is Python 3.10.
 - The package was renamed from `FalabellaAPIClient` to `falabella-sdk` (import `falabella_sdk`).
 
   ```python
@@ -168,6 +173,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 pytest
+ruff check .
 ```
 
 ## Licencia
