@@ -38,22 +38,46 @@ client = FalabellaClient(
 # 1. Obtener información de un producto
 try:
     product_list = ["TP-19150"]
-    item = client.products.get(SkuSellerList=json.dumps(product_list))
-    print("Producto obtenido:", item)
+    respuesta = client.products.get(SkuSellerList=json.dumps(product_list))
+    print("Productos obtenidos:", respuesta.items)
 except FalabellaAPIError as e:
     print(f"Error al obtener el producto: {e.message} (Status: {e.status_code})")
 
 # 2. Consultar órdenes
 try:
-    orders_list = client.orders.list(Limit=10)
-    print("Últimas 10 órdenes:", orders_list)
+    respuesta = client.orders.list(Limit=10)
+    print("Últimas 10 órdenes:", respuesta.items)
     
     # Obtener ítems de una orden específica
-    order_items = client.orders.items(order_id=100513)
-    print("Ítems de la orden 100513:", order_items)
+    items = client.orders.items(order_id=100513)
+    print("Ítems de la orden 100513:", items.items)
 except FalabellaAPIError as e:
     print(f"Error con las órdenes: {e}")
 ```
+
+## Respuestas
+
+Los métodos de recursos devuelven un `FalabellaResponse`:
+
+- `items`: lista de elementos de la colección (`[]` si no hay elementos).
+- `total_count`: `int` o `None`, tomado de `Head.TotalCount`.
+- `request_id`: id de la petición; en las escrituras es el id del feed.
+- `request_action` y `response_type`: metadatos de `Head`.
+- `head`, `body` y `raw`: encabezado, cuerpo sin la envoltura y respuesta original.
+
+| Método | Contenido de `items` |
+|---|---|
+| `client.products.get` | productos |
+| `client.products.brands` | marcas (diccionarios internos `Brand`) |
+| `client.products.get_category_tree` | categorías de primer nivel |
+| `client.products.get_category_attributes` | atributos de categoría |
+| `client.orders.list`, `get`, `multiple_order_items` | órdenes |
+| `client.orders.items` | ítems de órdenes |
+| `client.shipments.get_providers` | transportistas |
+
+Los métodos que no devuelven colecciones (`products.create`/`update`/`remove`,
+`orders.set_status_to_*`, `seller.get` y `shipments.get_document`) exponen los datos en `body`,
+`request_id` y el resto de propiedades de `FalabellaResponse`.
 
 Falabella exige enviar un encabezado `User-Agent` con el formato
 `SELLER_ID/TECHNOLOGY/TECHNOLOGY_VERSION/INTEGRATION_TYPE/BUSINESS_UNIT_CODE`
@@ -133,6 +157,19 @@ El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades
 ## Cambios incompatibles
 
 - Python 3.9 ya no es compatible; la versión mínima es Python 3.10.
+- Los métodos de recursos ahora devuelven `FalabellaResponse` en lugar del diccionario crudo; la
+  respuesta original sigue disponible en `.raw` y los elementos de colección están en `.items`.
+
+  ```python
+  # Antes
+  productos = client.products.get()["SuccessResponse"]["Body"]["Products"]["Product"]
+
+  # Después
+  respuesta = client.products.get()
+  productos = respuesta.items      # siempre una lista
+  total = respuesta.total_count    # int o None
+  ```
+
 - El paquete se renombró de `FalabellaAPIClient` a `falabella-sdk` (importación `falabella_sdk`).
 
   ```python
