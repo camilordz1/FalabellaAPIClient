@@ -27,9 +27,15 @@ class Products(Actions):
             raise FalabellaAPIError(
                 "Write response has no feed id to wait for", action=action
             )
-        feed_status = self.client.feeds.wait(
-            response.request_id, timeout=timeout, poll_interval=poll_interval
-        )
+        try:
+            feed_status = self.client.feeds.wait(
+                response.request_id, timeout=timeout, poll_interval=poll_interval
+            )
+        except FalabellaAPIError as error:
+            # The write is already sent: keep its feed id so the caller can check it later.
+            if error.feed_id is None:
+                error.feed_id = response.request_id
+            raise
         if feed_status.has_errors or feed_status.status != "Finished":
             raise FalabellaFeedError(feed_status)
         return feed_status
