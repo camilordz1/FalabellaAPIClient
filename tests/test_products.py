@@ -156,6 +156,14 @@ def test_brands_returns_single_inner_brand(client):
 
 
 @responses.activate
+def test_brands_accepts_documented_shape_with_several_brands(client):
+    """Docs shape: Body.Brands.Brand is a list (live API sends a list of wrappers)."""
+    add(responses.GET, body("Brands", {"Brand": [{"Id": 1}, {"Id": 2}]}))
+
+    assert client.products.brands().items == [{"Id": 1}, {"Id": 2}]
+
+
+@responses.activate
 def test_category_tree_returns_single_category_as_items(client):
     add(responses.GET, body("Categories", {"Category": {"Id": 1}}))
 

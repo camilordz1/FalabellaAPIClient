@@ -257,3 +257,18 @@ def test_unwrap_collection_item_key_unwraps_elements_with_key():
     result = unwrap_collection(raw, "Brands", item_key="Brand")
 
     assert result.items == [{"Id": 1}, {"Other": 2}]
+
+
+def test_unwrap_collection_flattens_item_key_lists_and_drops_empty():
+    raw = {
+        "SuccessResponse": {
+            "Head": {},
+            "Body": {"Brands": [{"Brand": [{"Id": 1}, {"Id": 2}]}, {"Brand": ""}, {"Id": 3}]},
+        }
+    }
+
+    assert unwrap_collection(raw, "Brands", item_key="Brand").items == [
+        {"Id": 1},
+        {"Id": 2},
+        {"Id": 3},
+    ]
