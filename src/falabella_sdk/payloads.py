@@ -4,6 +4,7 @@ import re
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any, Dict, List, TypedDict, Union
+from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 
 
@@ -183,6 +184,10 @@ def images_to_xml(images: Mapping[str, Sequence[str]]) -> bytes:
         for url in urls:
             if not isinstance(url, str) or not url.startswith("https://"):
                 raise ValueError(f"image URL for {seller_sku} must be a https:// string")
+            if not urlsplit(url).netloc or any(char.isspace() for char in url):
+                raise ValueError(
+                    f"image URL for {seller_sku} needs a host and no spaces: {url!r}"
+                )
             if _XML_INVALID_CHARS.search(url):
                 raise ValueError(f"image URL for {seller_sku} has characters not allowed in XML")
             if url in seen:
