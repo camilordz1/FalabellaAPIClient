@@ -7,7 +7,7 @@ name = "falabella-sdk"
 dynamic = ["version"]
 description = "Unofficial Python SDK for the Falabella Seller Center API"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "Camilo Andrés Rodríguez Higuera", email = "andres.roh@outlook.com"},
@@ -20,6 +20,10 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 [project.optional-dependencies]
@@ -41,7 +45,7 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 100
 src = ["src", "tests"]
 

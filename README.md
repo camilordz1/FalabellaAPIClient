@@ -15,6 +15,8 @@ Este módulo permite interactuar de manera sencilla y eficiente con la API de Fa
 pip install falabella-sdk
 ```
 
+Requires Python 3.10+.
+
 ---
 
 ## Uso Básico (Nueva Arquitectura)
@@ -131,6 +133,7 @@ El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades
 
 ## Breaking changes
 
+- Python 3.9 is no longer supported; the minimum version is Python 3.10.
 - The package was renamed from `FalabellaAPIClient` to `falabella-sdk` (import `falabella_sdk`).
 
   ```python
