@@ -9,7 +9,7 @@ DESCRIPTION = 'Este paquete nos permite consumir el API de falabella'
 PACKAGE_NAME = 'FalabellaAPIClient'
 AUTHOR = 'Camilo Andrés Rodríguez Higuera'
 EMAIL = 'andres.roh@outlook.com'
-GITHUB_URL = 'https://github.com/andresroh/FalabellaAPIClient'
+GITHUB_URL = 'https://github.com/camilordz1/FalabellaAPIClient'
 
 setup(
     name=PACKAGE_NAME,
