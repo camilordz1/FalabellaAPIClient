@@ -5,6 +5,26 @@ Todos los cambios relevantes de `falabella-sdk` se documentan aquí. El formato 
 [versionado semántico](https://semver.org/lang/es/). Mientras el SDK esté en versión alfa
 (`1.0.0aN`), una versión nueva puede traer cambios incompatibles.
 
+## [1.0.0a4] - 2026-11-17
+
+### Añadido
+- `products.create`, `update` y `remove` aceptan productos como diccionarios (o una lista de
+  ellos), además del XML escrito a mano. Las claves son los nombres de la API (`SellerSku`,
+  `BusinessUnits`, `ProductData`…). `None` omite un campo y `""` lo vacía.
+- `to_xml(...)` y los tipos `Product`, `BusinessUnit`, `BusinessUnits` y `PriceStockUpdate`
+  (`TypedDict`, sin dependencias nuevas).
+- `products.update_price_and_stock(items, wait=False)`: actualiza precio, stock, estado y oferta de
+  hasta 50 SKU con una lectura y una escritura. Conserva la oferta vigente cuando solo cambias
+  otros campos; `SpecialPrice: ""` la quita.
+
+### Corregido / validaciones
+- El XML se escapa siempre; la descripción del producto va en `CDATA` para conservar su HTML.
+- Se rechazan antes de enviar: caracteres no permitidos en XML, `SellerSku` vacío, `nan`/`inf`,
+  precios o stock de 10^15 o más, y tipos de payload no soportados. Los números se escriben sin
+  notación científica.
+- `update_price_and_stock` no reenvía una oferta vencida (según la hora de la unidad de negocio) y
+  falla antes de escribir si un `SpecialPrice` quedaría sin fechas o no sería menor que el `Price`.
+
 ## [1.0.0a3] - 2026-11-17
 
 ### Añadido
@@ -62,6 +82,7 @@ Primera versión con el nombre `falabella-sdk` (antes `FalabellaAPIClient`).
 - La firma codifica los espacios como `%20`: antes cualquier parámetro con espacios fallaba con
   `E007: Signature mismatch`.
 
+[1.0.0a4]: https://pypi.org/project/falabella-sdk/1.0.0a4/
 [1.0.0a3]: https://pypi.org/project/falabella-sdk/1.0.0a3/
 [1.0.0a2]: https://pypi.org/project/falabella-sdk/1.0.0a2/
 [1.0.0a1]: https://pypi.org/project/falabella-sdk/1.0.0a1/
