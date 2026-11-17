@@ -1,5 +1,7 @@
 # falabella-sdk
 
+[![CI](https://github.com/camilordz1/FalabellaAPIClient/actions/workflows/ci.yml/badge.svg)](https://github.com/camilordz1/FalabellaAPIClient/actions/workflows/ci.yml)
+
 **Unofficial** Python SDK for the Falabella Seller Center API. This project is not affiliated with
 or endorsed by Falabella.
 
@@ -168,6 +170,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 pytest
+ruff check .
 ```
 
 ## Licencia
