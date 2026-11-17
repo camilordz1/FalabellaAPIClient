@@ -747,6 +747,13 @@ IMAGES = {
     "TP-13027": ["https://cdn.example.com/a.jpg?w=100&h=200"],
 }
 
+QC_APPROVED = {"SellerSKU": "TP-10490", "Status": "approved", "Reason": ""}
+QC_REJECTED = {
+    "SellerSKU": "TP-18545",
+    "Status": "rejected",
+    "Reason": "Equipo Contenido - Producto no autorizado",
+}
+
 
 @responses.activate
 def test_upload_images_sends_image_action_and_golden_body(client):
@@ -798,5 +805,82 @@ def test_upload_images_wait_raises_on_feed_errors(client):
 def test_upload_images_invalid_input_sends_no_request(client, images, wait, kwargs):
     with pytest.raises(ValueError):
         client.products.upload_images(images, wait=wait, **kwargs)
+
+    assert len(responses.calls) == 0
+
+
+def qc_response(status_value):
+    return {"SuccessResponse": {"Head": {"RequestId": "r"}, "Body": {"Status": status_value}}}
+
+
+@responses.activate
+def test_get_qc_status_returns_inner_states_from_live_shape(client):
+    add(responses.GET, qc_response([{"State": QC_APPROVED}, {"State": QC_REJECTED}]))
+
+    result = client.products.get_qc_status(["TP-10490", "TP-18545"])
+
+    assert result.items == [QC_APPROVED, QC_REJECTED]
+    assert result.items[1]["SellerSKU"] == "TP-18545"
+
+
+@responses.activate
+def test_get_qc_status_accepts_documented_shape(client):
+    add(responses.GET, qc_response({"State": [QC_APPROVED, QC_REJECTED]}))
+
+    result = client.products.get_qc_status(["TP-10490", "TP-18545"])
+
+    assert result.items == [QC_APPROVED, QC_REJECTED]
+
+
+@responses.activate
+def test_get_qc_status_unknown_skus_return_empty_items(client):
+    add(responses.GET, qc_response([]))
+
+    assert client.products.get_qc_status(["TP-404"]).items == []
+
+
+@responses.activate
+def test_get_qc_status_params_with_skus(client):
+    add(responses.GET)
+
+    client.products.get_qc_status(["TP-10490", "TP-18545"])
+
+    query = sent_params(responses.calls[0])
+    assert query["Action"] == "GetQcStatus"
+    assert query["SkuSellerList"] == json.dumps(["TP-10490", "TP-18545"])
+    assert "Limit" not in query
+    assert "Offset" not in query
+
+
+@responses.activate
+def test_get_qc_status_params_without_skus(client):
+    add(responses.GET)
+
+    client.products.get_qc_status(limit=3, offset=5)
+
+    query = sent_params(responses.calls[0])
+    assert query["Action"] == "GetQcStatus"
+    assert query["Limit"] == "3"
+    assert query["Offset"] == "5"
+    assert "SkuSellerList" not in query
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"skus": []},
+        {"skus": ["TP-1", "TP-1"]},
+        {"skus": ["TP-1", ""]},
+        {"skus": [f"TP-{index}" for index in range(101)]},
+        {"skus": None, "limit": 0},
+        {"skus": None, "limit": 101},
+        {"skus": None, "limit": True},
+        {"skus": None, "offset": -1},
+    ],
+)
+@responses.activate
+def test_get_qc_status_invalid_input_sends_no_request(client, kwargs):
+    with pytest.raises(ValueError):
+        client.products.get_qc_status(**kwargs)
 
     assert len(responses.calls) == 0
