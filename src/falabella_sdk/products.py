@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from datetime import date, datetime, timedelta, timezone, tzinfo
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence, Union
@@ -7,7 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from falabella_sdk.actions import Actions
 from falabella_sdk.client import FalabellaAPIError, FalabellaFeedError
 from falabella_sdk.feeds import validate_wait_options
-from falabella_sdk.payloads import PriceStockUpdate, Product, to_xml
+from falabella_sdk.payloads import PriceStockUpdate, Product, images_to_xml, to_xml
 from falabella_sdk.responses import FalabellaResponse, unwrap, unwrap_collection
 
 if TYPE_CHECKING:
@@ -342,6 +343,42 @@ class Products(Actions):
         return self.update(
             payloads, wait=wait, timeout=timeout, poll_interval=poll_interval
         )
+
+    def upload_images(self, images: Mapping[str, Sequence[str]], *, wait: bool = False,
+                      timeout: float = 300.0,
+                      poll_interval: float = 5.0) -> Union[FalabellaResponse, "FeedStatus"]:
+        """Upload images for up to 50 SKUs (at most 8 public ``https://`` URLs each).
+
+        Images must be uploaded after the ``ProductCreate`` feed finished, otherwise
+        Falabella reports "Images Missing"; this method does not add implicit waits.
+
+        Args:
+            images: Mapping of ``SellerSku`` to 1–8 ``https://`` URLs.
+            wait: Wait for the feed when True. Defaults to False.
+            timeout: Maximum seconds to wait. Defaults to 300.0.
+            poll_interval: Seconds between polls. Defaults to 5.0.
+
+        Returns:
+            FalabellaResponse: Write response when ``wait=False``.
+            FeedStatus: Finished feed when ``wait=True``.
+
+        Raises:
+            ValueError: If the mapping or wait options are invalid (no request is sent).
+        """
+        if wait:
+            validate_wait_options(timeout, poll_interval)
+        if not isinstance(images, Mapping):
+            raise ValueError("images must be a mapping of SellerSku to URLs")
+        if len(images) > 50:
+            raise ValueError("images may contain at most 50 SKUs per call")
+
+        payload = images_to_xml(images)
+        response = unwrap(
+            self.client.query('post', params={"Action": "Image"}, payload=payload)
+        )
+        if wait:
+            return self._wait_for_feed(response, "Image", timeout, poll_interval)
+        return response
 
     def brands(self) -> FalabellaResponse:
         """Busca las marcas de vendedor disponibles.

@@ -10,6 +10,7 @@ from falabella_sdk.payloads import (
     BusinessUnits,
     PriceStockUpdate,
     Product,
+    images_to_xml,
     to_xml,
 )
 from falabella_sdk.products import Products
@@ -32,6 +33,7 @@ __all__ = [
     "BusinessUnit",
     "BusinessUnits",
     "PriceStockUpdate",
+    "images_to_xml",
     "to_xml",
     "Products",
     "Orders",

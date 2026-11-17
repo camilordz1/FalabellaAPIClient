@@ -4,7 +4,7 @@ from xml.etree import ElementTree
 
 import pytest
 
-from falabella_sdk import to_xml
+from falabella_sdk import images_to_xml, to_xml
 
 GOLDEN = Path(__file__).parent / "golden"
 
@@ -214,3 +214,43 @@ def test_absurd_exponent_is_rejected_anywhere():
     """Fixed-point output must not expand Decimal('1E+1000000') to a million digits."""
     with pytest.raises(ValueError, match="Ean"):
         to_xml({"SellerSku": "TP-1", "ProductData": {"Ean": Decimal("1E+1000000")}})
+
+
+IMAGES = {
+    "TP-10490": ["https://cdn.example.com/1.jpg", "https://cdn.example.com/2.jpg"],
+    "TP-13027": ["https://cdn.example.com/a.jpg?w=100&h=200"],
+}
+
+
+def test_images_to_xml_matches_golden():
+    assert images_to_xml(IMAGES) == (GOLDEN / "images.xml").read_bytes()
+
+
+def test_images_to_xml_escapes_and_round_trips_urls():
+    xml = images_to_xml(IMAGES)
+
+    root = ElementTree.fromstring(xml)
+    urls = [image.text for image in root.findall(".//ProductImage/Images/Image")]
+    assert urls == [
+        "https://cdn.example.com/1.jpg",
+        "https://cdn.example.com/2.jpg",
+        "https://cdn.example.com/a.jpg?w=100&h=200",
+    ]
+
+
+@pytest.mark.parametrize(
+    "images",
+    [
+        {},
+        {" ": ["https://a/1.jpg"]},
+        {"TP-1": []},
+        {"TP-1": [f"https://a/{index}.jpg" for index in range(9)]},
+        {"TP-1": [123]},
+        {"TP-1": ["http://a/1.jpg"]},
+        {"TP-1": ["https://a/1.jpg", "https://a/1.jpg"]},
+        {"TP-1": ["https://a/1.jpg\x01"]},
+    ],
+)
+def test_images_to_xml_rejects_invalid_input(images):
+    with pytest.raises(ValueError):
+        images_to_xml(images)
