@@ -4,7 +4,7 @@ import falabella_sdk
 
 
 def test_version():
-    assert falabella_sdk.__version__ == "1.0.0a2"
+    assert falabella_sdk.__version__ == "1.0.0a3"
 
 
 def test_public_api():

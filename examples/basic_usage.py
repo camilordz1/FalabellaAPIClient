@@ -9,6 +9,11 @@ Optional environment variables:
     FALABELLA_BUSINESS_UNIT  FACL (Chile), FACO (Colombia) or FAPE (Peru). Default: FACO.
     FALABELLA_SKU            Product SKU to fetch. Default: TP-19150.
     FALABELLA_ORDER_ID       Order id to fetch. Default: 100513.
+
+The example only reads data. Write operations return a feed id; to wait for the feed and get
+per-SKU errors, use for example:
+
+    status = client.products.update(xml, wait=True, timeout=120)  # raises FalabellaFeedError
 """
 import json
 import os
@@ -39,14 +44,21 @@ def main() -> int:
     order_id = os.environ.get("FALABELLA_ORDER_ID", "100513")
 
     try:
-        product = client.products.get(SkuSellerList=json.dumps([sku]))
-        print("product:", product)
+        products = client.products.get(SkuSellerList=json.dumps([sku]))
+        for product in products.items:
+            print("product:", product.get("SellerSku"), "-", product.get("Name"))
 
-        order = client.orders.get(order_id)
-        print("order:", order)
+        for feed in client.feeds.list().items[:5]:
+            status = client.feeds.status(feed["Feed"])
+            print("feed:", status.action, status.status, f"failed={status.failed_records}")
+            for error in status.errors:
+                print("   ", error.seller_sku, "-", error.message)
+
+        orders = client.orders.get(order_id)
+        print("orders found:", len(orders.items))
 
         items = client.orders.items(order_id)
-        print("orderItems:", items)
+        print("order items:", len(items.items))
     except FalabellaAPIError as exc:
         print(
             f"Falabella API error: {exc} (status: {exc.status_code})",
