@@ -174,12 +174,39 @@ El cliente `FalabellaClient` expone los siguientes recursos mediante propiedades
 
 ### 1. `client.products` (Productos y Categorías)
 *   `get(limit=1000, **kwargs)`: Obtiene información de productos utilizando el filtro `GetProducts`.
-*   `create(payload)`: Crea nuevos productos enviando una estructura XML.
-*   `update(payload)`: Actualiza productos existentes (estructura XML).
-*   `remove(payload)`: Elimina productos de la plataforma.
+*   `create(payload)`: Crea nuevos productos enviando un diccionario, una lista de diccionarios o XML.
+*   `update(payload)`: Actualiza productos existentes (diccionario, lista o XML).
+*   `remove(payload)`: Elimina productos de la plataforma (diccionario, lista o XML).
 *   `brands()`: Obtiene la lista de marcas asociadas del vendedor (`GetBrands`).
 *   `get_category_tree()`: Recupera la jerarquía completa de categorías de la plataforma.
 *   `get_category_attributes(primary_category_id)`: Retorna la lista de atributos y campos requeridos para una categoría específica.
+
+#### Enviar productos como diccionarios
+
+`create`, `update` y `remove` aceptan un diccionario (o una lista de diccionarios) con los nombres
+exactos de la API; las cadenas XML también siguen funcionando.
+
+```python
+from decimal import Decimal
+
+client.products.update(
+    {
+        "SellerSku": "TP-10490",
+        "Name": "Taladro",
+        "BusinessUnits": {
+            "BusinessUnit": {
+                "OperatorCode": "faco",
+                "Price": Decimal("310000.00"),
+                "Stock": 5,
+            }
+        },
+    },
+    wait=True,
+)
+```
+
+Envía los precios como `Decimal` o `str` para conservar los decimales exactos. Un valor `None`
+omite el campo y `""` lo envía vacío (por ejemplo, para limpiar `SpecialPrice`).
 
 ### 2. `client.orders` (Órdenes de Venta)
 *   `list(**kwargs)`: Obtiene la lista de órdenes (`GetOrders`).

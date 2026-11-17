@@ -1,13 +1,22 @@
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 from falabella_sdk.actions import Actions
 from falabella_sdk.client import FalabellaAPIError, FalabellaFeedError
 from falabella_sdk.feeds import validate_wait_options
+from falabella_sdk.payloads import Product, to_xml
 from falabella_sdk.responses import FalabellaResponse, unwrap, unwrap_collection
 
 if TYPE_CHECKING:
     from falabella_sdk.client import FalabellaClient
     from falabella_sdk.feeds import FeedStatus
+
+ProductPayload = Union[str, bytes, Product, Sequence[Product]]
+
+
+def _xml_payload(payload: ProductPayload) -> Any:
+    if isinstance(payload, (dict, list, tuple)):
+        return to_xml(payload)
+    return payload
 
 
 class Products(Actions):
@@ -62,13 +71,13 @@ class Products(Actions):
             self.client.query('get', params=params), "Products", "Product"
         )
 
-    def create(self, payload: Any, *, wait: bool = False, timeout: float = 300.0,
+    def create(self, payload: ProductPayload, *, wait: bool = False, timeout: float = 300.0,
                poll_interval: float = 5.0) -> Union[FalabellaResponse, "FeedStatus"]:
         """Crea nuevos productos en la plataforma.
 
         Args:
-            payload (Any): Datos de los productos (usualmente una cadena XML con
-                estructura de producto).
+            payload (dict | list[dict] | str | bytes): Producto(s) con los nombres de la API,
+                por ejemplo ``{"SellerSku": "TP-1", "Name": "Taladro"}``, o XML.
             wait (bool, optional): Esperar a que el feed termine. Por defecto es False.
             timeout (float, optional): Segundos máximos de espera. Por defecto es 300.0.
             poll_interval (float, optional): Segundos entre consultas. Por defecto es 5.0.
@@ -85,17 +94,19 @@ class Products(Actions):
         if wait:
             # Validate before sending: a write that fails afterwards would be retried.
             validate_wait_options(timeout, poll_interval)
+        payload = _xml_payload(payload)
         response = unwrap(self.client.query('post', params=params, payload=payload))
         if wait:
             return self._wait_for_feed(response, "ProductCreate", timeout, poll_interval)
         return response
 
-    def update(self, payload: Any, *, wait: bool = False, timeout: float = 300.0,
+    def update(self, payload: ProductPayload, *, wait: bool = False, timeout: float = 300.0,
                poll_interval: float = 5.0) -> Union[FalabellaResponse, "FeedStatus"]:
         """Actualiza productos existentes.
 
         Args:
-            payload (Any): Datos actualizados de los productos (estructura XML).
+            payload (dict | list[dict] | str | bytes): Producto(s) con los nombres de la API,
+                por ejemplo ``{"SellerSku": "TP-1", "Stock": 5}``, o XML.
             wait (bool, optional): Esperar a que el feed termine. Por defecto es False.
             timeout (float, optional): Segundos máximos de espera. Por defecto es 300.0.
             poll_interval (float, optional): Segundos entre consultas. Por defecto es 5.0.
@@ -112,17 +123,19 @@ class Products(Actions):
         if wait:
             # Validate before sending: a write that fails afterwards would be retried.
             validate_wait_options(timeout, poll_interval)
+        payload = _xml_payload(payload)
         response = unwrap(self.client.query('post', params=params, payload=payload))
         if wait:
             return self._wait_for_feed(response, "ProductUpdate", timeout, poll_interval)
         return response
 
-    def remove(self, payload: Any, *, wait: bool = False, timeout: float = 300.0,
+    def remove(self, payload: ProductPayload, *, wait: bool = False, timeout: float = 300.0,
                poll_interval: float = 5.0) -> Union[FalabellaResponse, "FeedStatus"]:
         """Elimina productos de la plataforma.
 
         Args:
-            payload (Any): Datos de identificación de los productos a eliminar.
+            payload (dict | list[dict] | str | bytes): Producto(s) a eliminar, por ejemplo
+                ``{"SellerSku": "TP-1"}``, o XML.
             wait (bool, optional): Esperar a que el feed termine. Por defecto es False.
             timeout (float, optional): Segundos máximos de espera. Por defecto es 300.0.
             poll_interval (float, optional): Segundos entre consultas. Por defecto es 5.0.
@@ -139,6 +152,7 @@ class Products(Actions):
         if wait:
             # Validate before sending: a write that fails afterwards would be retried.
             validate_wait_options(timeout, poll_interval)
+        payload = _xml_payload(payload)
         response = unwrap(self.client.query('post', params=params, payload=payload))
         if wait:
             return self._wait_for_feed(response, "ProductRemove", timeout, poll_interval)

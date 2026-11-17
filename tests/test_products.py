@@ -1,4 +1,6 @@
 import re
+from decimal import Decimal
+from pathlib import Path
 
 import pytest
 import requests
@@ -353,3 +355,46 @@ def test_update_wait_feed_error_falls_back_to_write_feed_id(client):
         client.products.update("<Request/>", wait=True)
 
     assert exc_info.value.feed_id == "feed-5"
+
+
+GOLDEN = Path(__file__).parent / "golden"
+
+
+@responses.activate
+def test_update_accepts_dict_and_sends_golden_xml(client):
+    add(responses.POST)
+
+    client.products.update(
+        {
+            "SellerSku": "TP-10490",
+            "BusinessUnits": {
+                "BusinessUnit": {
+                    "OperatorCode": "faco",
+                    "Price": Decimal("310000.00"),
+                    "Stock": 5,
+                }
+            },
+        }
+    )
+
+    request = responses.calls[0].request
+    assert request.body == (GOLDEN / "price_stock_update.xml").read_bytes()
+    assert request.headers["Content-Type"] == "application/xml; charset=utf-8"
+
+
+@responses.activate
+def test_update_accepts_list_of_dicts_in_one_request(client):
+    add(responses.POST)
+
+    client.products.update([{"SellerSku": "TP-1", "Name": "Uno"}, {"SellerSku": "TP-2", "Name": "Dos"}])
+
+    assert len(responses.calls) == 1
+    assert responses.calls[0].request.body == (GOLDEN / "two_products.xml").read_bytes()
+
+
+@responses.activate
+def test_update_rejects_unsupported_payload_without_request(client):
+    with pytest.raises(TypeError):
+        client.products.update(42)
+
+    assert len(responses.calls) == 0
