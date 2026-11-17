@@ -420,7 +420,8 @@ def test_create_and_remove_accept_dict_payloads(client, method):
 
 # The offer in PRICE_STOCK_SPECIAL runs 2026-11-09..2026-11-20.
 OFFER_ACTIVE_DAY = "2026-11-15"
-OFFER_EXPIRED_DAY = "2026-11-21"
+# Expiry is judged in the business unit time zone (FACO: America/Bogota, UTC-5).
+OFFER_EXPIRED_DAY = "2026-11-21 12:00:00"  # 07:00 on 2026-11-21 in Bogota
 
 PRICE_STOCK_SPECIAL = {
     "SellerSku": "TP-10490",
@@ -694,3 +695,48 @@ def test_update_price_and_stock_accepts_price_above_kept_offer(client):
     body = responses.calls[1].request.body
     assert b"<Price>260000.00</Price>" in body
     assert b"<SpecialPrice>250000.00</SpecialPrice>" in body
+
+
+@freeze_time("2026-11-21 03:00:00")  # still 2026-11-20 22:00 in Bogota: the offer is active
+@responses.activate
+def test_offer_expiry_uses_the_business_unit_time_zone(client):
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+
+    client.products.update_price_and_stock({"SellerSku": "TP-10490", "Stock": 3})
+
+    assert b"<SpecialPrice>250000.00</SpecialPrice>" in responses.calls[1].request.body
+
+
+@freeze_time(OFFER_EXPIRED_DAY)
+@responses.activate
+def test_new_special_price_without_dates_on_expired_offer_is_rejected(client):
+    """The expired dates are not kept, so the new SpecialPrice would have no dates."""
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+
+    with pytest.raises(ValueError, match="SpecialFromDate or SpecialToDate"):
+        client.products.update_price_and_stock(
+            {"SellerSku": "TP-10490", "SpecialPrice": "200000.00"}
+        )
+
+    assert [call.request.method for call in responses.calls] == ["GET"]
+
+
+@freeze_time(OFFER_EXPIRED_DAY)
+@responses.activate
+def test_new_offer_with_dates_on_expired_offer_is_sent(client):
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+
+    client.products.update_price_and_stock(
+        {
+            "SellerSku": "TP-10490",
+            "SpecialPrice": "200000.00",
+            "SpecialToDate": "2026-12-31 00:00:00",
+        }
+    )
+
+    body = responses.calls[1].request.body
+    assert b"<SpecialPrice>200000.00</SpecialPrice>" in body
+    assert b"<SpecialFromDate>" not in body

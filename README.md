@@ -233,7 +233,8 @@ opciones de espera inválidas fallan sin enviar el update. Entre la lectura y la
 carrera: si la oferta cambia en Seller Center en ese instante, este update puede pisarla (la API
 no ofrece escrituras condicionales).
 
-Una oferta vencida (`SpecialToDate` anterior a hoy) no se vuelve a enviar. Si el resultado dejaría
+Una oferta vencida (`SpecialToDate` anterior a hoy, según la hora de la unidad de negocio: Bogotá,
+Santiago o Lima) no se vuelve a enviar; un `SpecialPrice` nuevo necesita entonces sus fechas. Si el resultado dejaría
 un `SpecialPrice` igual o mayor que el `Price` (por ejemplo, al bajar el precio por debajo de la
 oferta vigente), el método falla antes de escribir: cambia también `SpecialPrice` o quita la oferta
 con `""`.
