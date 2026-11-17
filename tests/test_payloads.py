@@ -201,3 +201,16 @@ def test_number_below_limit_is_allowed():
     xml = to_xml({"SellerSku": "A", "Stock": 999999999999999})
 
     assert b"<Stock>999999999999999</Stock>" in xml
+
+
+@pytest.mark.parametrize("value", [10**18, Decimal("123456789012345678")])
+def test_large_numbers_are_allowed_outside_price_and_stock(value):
+    xml = to_xml({"SellerSku": "TP-1", "ProductData": {"Ean": value}})
+
+    assert ElementTree.fromstring(xml).find(".//Ean").text == str(value)
+
+
+def test_absurd_exponent_is_rejected_anywhere():
+    """Fixed-point output must not expand Decimal('1E+1000000') to a million digits."""
+    with pytest.raises(ValueError, match="Ean"):
+        to_xml({"SellerSku": "TP-1", "ProductData": {"Ean": Decimal("1E+1000000")}})

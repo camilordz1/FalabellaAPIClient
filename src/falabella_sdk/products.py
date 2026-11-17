@@ -1,5 +1,7 @@
 import json
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from datetime import date
+from decimal import Decimal, InvalidOperation
+from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence, Union
 
 from falabella_sdk.actions import Actions
 from falabella_sdk.client import FalabellaAPIError, FalabellaFeedError
@@ -46,6 +48,40 @@ def _find_business_unit(product: Any, operator_code: str) -> dict:
             return unit
     return {}
 
+
+
+def _decimal(value: Any) -> Optional[Decimal]:
+    """Parse a price as Decimal; ``None`` when empty or not a number."""
+    if value is None or value == "" or isinstance(value, bool):
+        return None
+    try:
+        number = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+    return number if number.is_finite() else None
+
+
+def _offer_has_ended(business_unit: Dict[str, Any]) -> bool:
+    """Whether ``SpecialToDate`` (``YYYY-MM-DD[ HH:MM:SS]``) is before today."""
+    end = business_unit.get("SpecialToDate")
+    if not isinstance(end, str) or len(end) < 10:
+        return False
+    try:
+        return date.fromisoformat(end[:10]) < date.today()
+    except ValueError:
+        return False
+
+
+def _check_special_below_price(seller_sku: str, business_unit: Dict[str, Any],
+                               current_unit: Dict[str, Any]) -> None:
+    """Reject an update whose SpecialPrice would not be below the Price (before writing)."""
+    special = _decimal(business_unit.get("SpecialPrice"))
+    price = _decimal(business_unit.get("Price", current_unit.get("Price")))
+    if special is not None and price is not None and special >= price:
+        raise ValueError(
+            f"{seller_sku}: SpecialPrice {special} must be below Price {price}; "
+            "change SpecialPrice or clear the offer with SpecialPrice ''"
+        )
 
 class Products(Actions):
     """Operaciones relacionadas con el recurso de Productos en la API de Falabella."""
@@ -265,11 +301,14 @@ class Products(Actions):
                 if field in item:
                     business_unit[field] = item[field]
             # Keep the current offer for every special field the caller did not set, unless the
-            # caller clears it with SpecialPrice "": a SpecialPrice without dates is rejected.
-            if item.get("SpecialPrice") != "" and current_unit.get("SpecialPrice"):
+            # caller clears it with SpecialPrice "" or the offer already ended: a SpecialPrice
+            # without dates is rejected, and an expired offer must not be sent again.
+            if (item.get("SpecialPrice") != "" and current_unit.get("SpecialPrice")
+                    and not _offer_has_ended(current_unit)):
                 for field in ("SpecialPrice", "SpecialFromDate", "SpecialToDate"):
                     if field not in item:
                         business_unit[field] = current_unit.get(field, "")
+            _check_special_below_price(seller_sku, business_unit, current_unit)
             payloads.append(
                 {"SellerSku": seller_sku, "BusinessUnits": {"BusinessUnit": business_unit}}
             )

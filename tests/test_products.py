@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 import requests
 import responses
+from freezegun import freeze_time
 
 from falabella_sdk import (
     FalabellaAPIError,
@@ -417,6 +418,10 @@ def test_create_and_remove_accept_dict_payloads(client, method):
 
 
 
+# The offer in PRICE_STOCK_SPECIAL runs 2026-11-09..2026-11-20.
+OFFER_ACTIVE_DAY = "2026-11-15"
+OFFER_EXPIRED_DAY = "2026-11-21"
+
 PRICE_STOCK_SPECIAL = {
     "SellerSku": "TP-10490",
     "BusinessUnits": {
@@ -442,6 +447,7 @@ def products_response(products):
     }
 
 
+@freeze_time(OFFER_ACTIVE_DAY)
 @responses.activate
 def test_update_price_and_stock_keeps_current_offer(client):
     add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
@@ -455,6 +461,7 @@ def test_update_price_and_stock_keeps_current_offer(client):
     assert b"<Status>" not in body
 
 
+@freeze_time(OFFER_ACTIVE_DAY)
 @responses.activate
 def test_update_price_and_stock_new_special_price_keeps_current_dates(client):
     """A SpecialPrice without dates is rejected by Falabella, so keep the current ones."""
@@ -472,6 +479,7 @@ def test_update_price_and_stock_new_special_price_keeps_current_dates(client):
     assert f"<SpecialToDate>{current['SpecialToDate']}</SpecialToDate>" in body
 
 
+@freeze_time(OFFER_ACTIVE_DAY)
 @responses.activate
 def test_update_price_and_stock_empty_special_price_clears_the_offer(client):
     add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
@@ -620,6 +628,7 @@ def test_update_price_and_stock_invalid_wait_options_send_no_request(client):
     assert len(responses.calls) == 0
 
 
+@freeze_time(OFFER_ACTIVE_DAY)
 @responses.activate
 def test_update_price_and_stock_wait_returns_feed_status(client):
     add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
@@ -632,3 +641,56 @@ def test_update_price_and_stock_wait_returns_feed_status(client):
 
     assert isinstance(result, FeedStatus)
     assert len(responses.calls) == 3
+
+
+@freeze_time(OFFER_EXPIRED_DAY)
+@responses.activate
+def test_update_price_and_stock_does_not_resend_an_expired_offer(client):
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+
+    client.products.update_price_and_stock({"SellerSku": "TP-10490", "Stock": 3})
+
+    body = responses.calls[1].request.body
+    assert b"Special" not in body
+
+
+@freeze_time(OFFER_ACTIVE_DAY)
+@pytest.mark.parametrize("price", ["250000.00", Decimal("200000"), 240000])
+@responses.activate
+def test_update_price_and_stock_rejects_price_not_above_kept_offer(client, price):
+    """Current offer is 250000.00: a new Price at or below it would make the offer invalid."""
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+
+    with pytest.raises(ValueError, match="TP-10490"):
+        client.products.update_price_and_stock({"SellerSku": "TP-10490", "Price": price})
+
+    assert [call.request.method for call in responses.calls] == ["GET"]
+
+
+@freeze_time(OFFER_ACTIVE_DAY)
+@responses.activate
+def test_update_price_and_stock_rejects_special_not_below_price(client):
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+
+    with pytest.raises(ValueError, match="SpecialPrice"):
+        client.products.update_price_and_stock(
+            {"SellerSku": "TP-10490", "SpecialPrice": "310000.00"}
+        )
+
+    assert [call.request.method for call in responses.calls] == ["GET"]
+
+
+@freeze_time(OFFER_ACTIVE_DAY)
+@responses.activate
+def test_update_price_and_stock_accepts_price_above_kept_offer(client):
+    add(responses.GET, products_response([PRICE_STOCK_SPECIAL]))
+    add(responses.POST, write_response())
+
+    client.products.update_price_and_stock({"SellerSku": "TP-10490", "Price": "260000.00"})
+
+    body = responses.calls[1].request.body
+    assert b"<Price>260000.00</Price>" in body
+    assert b"<SpecialPrice>250000.00</SpecialPrice>" in body
