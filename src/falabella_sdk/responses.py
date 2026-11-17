@@ -138,6 +138,8 @@ def unwrap_collection(raw: Any, *path: str,
         *path: Keys that lead to the collection inside the unwrapped body.
         item_key: When given, elements that are dicts containing this key are
             replaced by ``element[item_key]``; other elements are left unchanged.
+            An unwrapped list is flattened into ``items``, so both
+            ``[{"Brand": {...}}, ...]`` and ``{"Brand": [...]}`` give the inner dicts.
 
     Returns:
         FalabellaResponse: ``unwrap(raw)`` with ``items`` filled from ``get_list``.
@@ -145,8 +147,11 @@ def unwrap_collection(raw: Any, *path: str,
     response = unwrap(raw)
     items = get_list(response.body, *path)
     if item_key is not None:
-        items = [
-            element[item_key] if isinstance(element, dict) and item_key in element else element
-            for element in items
-        ]
+        unwrapped: List[Any] = []
+        for element in items:
+            if isinstance(element, dict) and item_key in element:
+                unwrapped.extend(as_list(element[item_key]))
+            else:
+                unwrapped.append(element)
+        items = unwrapped
     return replace(response, items=items)
