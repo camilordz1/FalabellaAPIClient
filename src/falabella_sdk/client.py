@@ -25,7 +25,8 @@ class FalabellaAPIError(Exception):
     def __init__(self, message: str, status_code: Optional[int] = None,
                  response_body: Optional[str] = None, *, error_code: Optional[str] = None,
                  error_type: Optional[str] = None, action: Optional[str] = None,
-                 details: Optional[List[Dict[str, Any]]] = None) -> None:
+                 details: Optional[List[Dict[str, Any]]] = None,
+                 feed_id: Optional[str] = None) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.response_body = response_body
@@ -33,6 +34,8 @@ class FalabellaAPIError(Exception):
         self.error_type = error_type
         self.action = action
         self.details = details if details is not None else []
+        # Feed id of an already-sent write, so callers can check it later.
+        self.feed_id = feed_id
 
 
 class FalabellaFeedError(FalabellaAPIError):
@@ -52,7 +55,7 @@ class FalabellaFeedError(FalabellaAPIError):
                 )
             if len(errors) > 3:
                 message += f" (+{len(errors) - 3} more)"
-        super().__init__(message, action=feed_status.action)
+        super().__init__(message, action=feed_status.action, feed_id=feed_status.feed_id)
         self.feed_status = feed_status
         self.errors = errors
 

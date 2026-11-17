@@ -1,9 +1,13 @@
+import re
+
 import pytest
+import requests
 import responses
 
 from falabella_sdk import (
     FalabellaAPIError,
     FalabellaFeedError,
+    FalabellaFeedTimeout,
     FalabellaResponse,
     FeedStatus,
 )
@@ -295,3 +299,45 @@ def test_wait_options_are_validated_before_sending_the_write(client, method, opt
         getattr(client.products, method)("<Request/>", wait=True, **options)
 
     assert len(responses.calls) == 0
+
+
+@responses.activate
+def test_update_wait_polling_failure_keeps_feed_id(client):
+    """The write was already sent: the error must say which feed to check later."""
+    add(responses.POST, write_response("feed-42"))
+    responses.add(
+        responses.GET, re.compile(r"https://sellercenter-api"), body=requests.ConnectionError("down")
+    )
+    client.max_retries = 0
+
+    with pytest.raises(FalabellaAPIError) as exc_info:
+        client.products.update("<Request/>", wait=True)
+
+    assert not isinstance(exc_info.value, FalabellaFeedError)
+    assert exc_info.value.feed_id == "feed-42"
+
+
+@responses.activate
+def test_update_wait_feed_error_exposes_feed_id(client):
+    add(responses.POST, write_response("feed-7"))
+    add(responses.GET, feed_response(Feed="feed-7", Status="Canceled"))
+
+    with pytest.raises(FalabellaFeedError) as exc_info:
+        client.products.update("<Request/>", wait=True)
+
+    assert exc_info.value.feed_id == "feed-7"
+
+
+@responses.activate
+def test_update_wait_timeout_raises_with_feed_id(client):
+    add(responses.POST, write_response("feed-9"))
+    add(responses.GET, feed_response(Feed="feed-9", Status="Processing"))
+    now = [0.0]
+    client._sleep = lambda seconds: now.__setitem__(0, now[0] + seconds)
+    client.feeds._clock = lambda: now[0]
+
+    with pytest.raises(FalabellaFeedTimeout) as exc_info:
+        client.products.update("<Request/>", wait=True, timeout=10, poll_interval=5)
+
+    assert exc_info.value.feed_id == "feed-9"
+    assert exc_info.value.feed_status.status == "Processing"

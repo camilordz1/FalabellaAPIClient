@@ -131,6 +131,10 @@ consultado. Un feed `Finished` puede tener registros fallidos: en ese caso `wait
 `FalabellaFeedError` con la lista de errores. Con `wait=False` (el valor por defecto) el método
 devuelve el `FalabellaResponse` de siempre.
 
+Si la espera falla (tiempo agotado, error de red o de la API), la escritura ya se envió: el error
+incluye `feed_id` para que puedas consultar el feed más tarde con `client.feeds.status(e.feed_id)`
+en lugar de reenviar la escritura.
+
 ---
 
 ## Tiempos de espera y reintentos
