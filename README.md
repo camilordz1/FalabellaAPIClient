@@ -177,4 +177,4 @@ ruff check .
 
 ## Licencia
 
-Este proyecto se encuentra bajo la Licencia [MIT](licence).
+Este proyecto se encuentra bajo la Licencia [MIT](LICENSE).
