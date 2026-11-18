@@ -5,6 +5,17 @@ Todos los cambios relevantes de `falabella-sdk` se documentan aquí. El formato 
 [versionado semántico](https://semver.org/lang/es/). Mientras el SDK esté en versión alfa
 (`1.0.0aN`), una versión nueva puede traer cambios incompatibles.
 
+## [1.0.0a5] - 2026-11-17
+
+### Añadido
+- `products.upload_images({sku: [urls]}, wait=False)`: sube hasta 8 imágenes por SKU (solo
+  `https://`, con host y sin espacios), hasta 50 SKU por llamada. Con `wait=True` espera el feed
+  como las demás escrituras. Sube las imágenes después de que termine el feed del `create`.
+- `products.get_qc_status(skus=None, limit=None, offset=None)`: estado de control de calidad
+  (`items` con `SellerSKU`, `Status`, `Reason`). Con una lista de SKU no se puede paginar, así que
+  combinar `skus` con `limit`/`offset` lanza `ValueError`.
+- `images_to_xml(...)`.
+
 ## [1.0.0a4] - 2026-11-17
 
 ### Añadido
@@ -82,6 +93,7 @@ Primera versión con el nombre `falabella-sdk` (antes `FalabellaAPIClient`).
 - La firma codifica los espacios como `%20`: antes cualquier parámetro con espacios fallaba con
   `E007: Signature mismatch`.
 
+[1.0.0a5]: https://pypi.org/project/falabella-sdk/1.0.0a5/
 [1.0.0a4]: https://pypi.org/project/falabella-sdk/1.0.0a4/
 [1.0.0a3]: https://pypi.org/project/falabella-sdk/1.0.0a3/
 [1.0.0a2]: https://pypi.org/project/falabella-sdk/1.0.0a2/

@@ -18,7 +18,7 @@ from falabella_sdk.responses import FalabellaResponse
 from falabella_sdk.seller import Seller
 from falabella_sdk.shipments import Shipments
 
-__version__ = "1.0.0a4"
+__version__ = "1.0.0a5"
 
 __all__ = [
     "FalabellaClient",
